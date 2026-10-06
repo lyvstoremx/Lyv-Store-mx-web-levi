@@ -2195,7 +2195,7 @@ async function guardarPerfilVisual(){
         if(estado){estado.textContent='Guardando en tu cuenta...';estado.style.color='var(--text-muted)';}
         const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
         if(userError||!user) throw userError||new Error('Sesión no encontrada.');
-        const {error}=await lyvSupabase.from('profiles').update({username:u,display_name:n}).eq('id',user.id);
+        const {error}=await lyvSupabase.rpc('update_my_profile', {p_username:u, p_display_name:n});
         if(error){
             if(error.code==='23505') throw new Error('Ese nombre de usuario ya está ocupado. Elige otro.');
             throw error;
