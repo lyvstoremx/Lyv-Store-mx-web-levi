@@ -1045,10 +1045,12 @@
                 <div class="admin-row"><span>Órdenes pendientes</span><span id="adminProveedorPendientes">0</span></div>
                 <div style="display:flex;gap:8px;margin-top:10px;">
                     <button class="btn-action" type="button" onclick="probarConexionClever('adminProveedorPruebaResultado')">Probar conexión real</button>
+                    <button class="btn-action" type="button" onclick="consultarCatalogoClever('adminProveedorCatalogoResultado')">Consultar catálogo real</button>
                     <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="sincronizarProveedorAdminVisual()">Sincronizar estados</button>
                 </div>
                 <div id="adminProveedorPruebaResultado" style="font-size:.72rem;margin-top:9px;"></div>
-                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">Esta prueba usa la sesión de Supabase para llamar al backend. No crea compras, no descuenta saldo y no envía una orden a SixoFire.</div>
+                <div id="adminProveedorCatalogoResultado" style="font-size:.72rem;margin-top:9px;"></div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La prueba de catálogo consulta SixoFire desde el backend. No crea compras, no descuenta saldo y no envía una orden.</div>
             </div>
 
             <!-- CENTRO DE INCIDENCIAS -->
@@ -2363,6 +2365,36 @@ async function probarConexionClever(resultadoId='cleverTestResultado'){
       return;
     }
     if(box) box.innerHTML='<span style="color:#ffc107">✓ El backend respondió: '+escapeHtml(data?.code||'OK')+'</span>';
+  }catch(e){
+    const msg=String(e?.message||e||'');
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+  }
+}
+
+async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResultado'){
+  const box=document.getElementById(resultadoId);
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Consultando catálogo real de SixoFire...</span>';
+  try{
+    const data=await llamarCleverEndpoint({action:'catalog'});
+    const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
+    if(data?.code!=='CATALOG_OK') throw new Error(data?.message||data?.code||'No se pudo consultar el catálogo.');
+    if(!items.length){
+      if(box) box.innerHTML='<span style="color:#ffc107">✓ Catálogo consultado, pero no devolvió productos.</span>';
+      return;
+    }
+    const visibles=items.filter(x=>x && (x.available!==false || x.isActive!==false)).slice(0,100);
+    if(box){
+      box.innerHTML='<div style="color:#6ee7a0;margin-bottom:7px">✓ Catálogo real recibido: '+items.length+' productos.</div>'+
+        '<div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto">'+
+        visibles.map(x=>{
+          const id=escapeHtml(String(x.id??''));
+          const name=escapeHtml(String(x.name??'Producto sin nombre'));
+          const price=x.effectivePriceUsd ?? x.priceUsd ?? null;
+          const priceText=price==null?'Precio no disponible':'$'+Number(price).toFixed(2)+' USD';
+          const type=escapeHtml(String(x.itemType??''));
+          return '<div class="admin-row" style="align-items:flex-start"><div><b>'+name+'</b><div style="font-size:.68rem;color:var(--text-muted)">ID proveedor: '+id+' · '+type+'</div></div><span style="font-size:.7rem;color:#fff">'+priceText+'</span></div>';
+        }).join('')+'</div>';
+    }
   }catch(e){
     const msg=String(e?.message||e||'');
     if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
