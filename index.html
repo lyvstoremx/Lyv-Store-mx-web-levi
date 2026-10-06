@@ -1076,8 +1076,7 @@
                     <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
-                    <button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">🧪 Crear orden real de $0.03 USD</button>
-                    <div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
+<div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
                 </div>
                 <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La consulta de catálogo usa SixoFire desde el backend. La orden de prueba solo se envía cuando confirmas el botón amarillo.</div>
             </div>
@@ -2325,25 +2324,9 @@ async function mostrarConfirmacionCompra(){
 }
 async function resolverProductoProviderId(producto){
     const explicit=producto?.sixofire_product_id ?? producto?.product_id ?? producto?.provider_product_id;
-    if(explicit) return String(explicit);
-    try{
-        const data=await llamarCleverEndpoint({action:'catalog'});
-        const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
-        const nombre=String(producto?.nombre||'').trim().toLowerCase();
-        const item=items.find(x=>{
-            const n=String(x?.name||x?.title||'').trim().toLowerCase();
-            return n===nombre || (nombre==='1 fragmento' && /fragmento universal|1 fragmento/.test(n));
-        });
-        if(item){
-            const id=item?.id ?? item?.product_id ?? item?.productId;
-            if(id) return String(id);
-        }
-    }catch(e){
-        console.warn('No se pudo resolver product_id de SixoFire:',e);
-    }
-    // ID conocido de la prueba real que ya está configurada en el panel admin.
-    if(String(producto?.nombre||'').trim().toLowerCase()==='1 fragmento') return '17729';
-    return null;
+    // El backend es la fuente de verdad y puede resolver automáticamente el product_id
+    // contra el catálogo real de SixoFire cuando la tabla local todavía no tiene mapping.
+    return explicit ? String(explicit) : null;
 }
 
 async function confirmarCompraVisual(){
@@ -2375,14 +2358,10 @@ async function confirmarCompraVisual(){
 
     try{
         const providerProductId=await resolverProductoProviderId(p.producto);
-        if(!providerProductId){
-            throw new Error('No se encontró el product_id de SixoFire para este producto. Prueba con 1 Fragmento.');
-        }
-
         const respuesta=await llamarCleverEndpoint({
             action:'shop_order',
             uid:String(p.idFreeFire),
-            product_id:String(providerProductId),
+            product_id:providerProductId ? String(providerProductId) : null,
             store_product_id:Number(p.producto.id),
             quantity:Number(p.cantidad),
             local_order_id:generarIdOrdenUnico()
@@ -2412,7 +2391,7 @@ async function confirmarCompraVisual(){
             estado:'ORDEN ENVIADA A SIXOFIRE',
             estadoProveedor:respuesta.status||null,
             providerOrderId:providerId,
-            providerProductId:String(providerProductId),
+            providerProductId:String(respuesta.product_id||providerProductId||''),
             fecha:new Date().toLocaleString(),
             timestamp:Date.now(),
             tipo:'compra'
@@ -2443,7 +2422,7 @@ async function confirmarCompraVisual(){
               <b>Pedido Lyv:</b> ${escapeHtml(idOrden)}<br>
               <b>ID SixoFire:</b> ${escapeHtml(providerId||'No devuelto')}<br>
               <b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br>
-              <b>Product ID:</b> ${escapeHtml(providerProductId)}<br>
+              <b>Product ID:</b> ${escapeHtml(String(respuesta.product_id||providerProductId||'resuelto por SixoFire'))}<br>
               <b>Cantidad:</b> ${p.cantidad}<br>
               <b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br>
               <b>Estado:</b> <span style="color:#ffc107">${escapeHtml(respuesta.status||'Creada')}</span>
@@ -2737,10 +2716,8 @@ async function validarId(){
         const nickname = String(account.nickname || '').trim();
         const detectedRegion = String(account.region || region).trim().toUpperCase();
 
-        if(!nickname){
-            throw new Error('SixoFire confirmó la cuenta, pero no devolvió el nombre del jugador.');
-        }
-
+        // SixoFire puede confirmar la cuenta aunque Garena no devuelva nickname.
+        // La validación debe basarse en status=true/ACCOUNT_INFO_OK, no en que exista nombre.
         idFreeFire = inputId;
         window.lyvFreeFireName = nickname;
         window.lyvFreeFireRegion = detectedRegion;
@@ -2749,12 +2726,9 @@ async function validarId(){
         if(regionEl) regionEl.value = detectedRegion;
 
         if(msg){
-            msg.innerHTML =
-                '<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>' +
-                escapeHtml(nickname) +
-                '</b> · Región ' +
-                escapeHtml(detectedRegion) +
-                '</span>';
+            msg.innerHTML = nickname
+                ? '<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>' + escapeHtml(nickname) + '</b> · Región ' + escapeHtml(detectedRegion) + '</span>'
+                : '<span style="color:#45e08a">✓ Cuenta confirmada por SixoFire · UID ' + escapeHtml(inputId) + ' · Región ' + escapeHtml(detectedRegion) + '</span>';
         }
 
         lyvLog(
@@ -2866,36 +2840,6 @@ async function probarConexionClever(resultadoId='cleverTestResultado'){
   }catch(e){
     const msg=String(e?.message||e||'');
     if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
-  }
-}
-
-async function probarOrdenRealSixoFire(){
-  const btn=document.getElementById('btnPruebaOrdenSixoFire');
-  const box=document.getElementById('adminPruebaOrdenResultado');
-  const uid='14608057611';
-  const productId='17729';
-  const confirmado=window.confirm('Esta acción CREARÁ UNA ORDEN REAL en SixoFire por $0.03 USD para el UID '+uid+'.\n\n¿Quieres continuar?');
-  if(!confirmado) return;
-  if(btn){btn.disabled=true;btn.innerText='Creando orden real...';}
-  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Enviando una sola orden real a SixoFire...</span>';
-  try{
-    const data=await llamarCleverEndpoint({action:'shop_order',uid,product_id:productId,store_product_id:8,quantity:1,local_order_id:'ADMIN-TEST-'+Date.now()});
-    if(!data?.ok || data?.code!=='SHOP_ORDER_CREATED_AND_CHARGED'){
-      throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
-    }
-    const providerId=data?.provider_order_id ?? 'No informado';
-    const status=data?.status ?? 'No informado';
-    localStorage.setItem('lyv_last_provider_order_id',String(providerId));
-    localStorage.setItem('lyv_provider_status',String(status));
-    localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
-    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ ORDEN REAL CREADA.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(String(providerId))+'</b> · Estado: <b>'+escapeHtml(String(status))+'</b></span>';
-    renderAdminProveedor();
-    lyvLog('SIXOFIRE SHOP_ORDER','Orden real creada · UID '+uid+' · producto '+productId+' · provider_order_id '+providerId);
-    if(btn){btn.innerText='Orden creada ✓';btn.disabled=true;}
-  }catch(e){
-    const msg=String(e?.message||e||'Error desconocido');
-    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
-    if(btn){btn.disabled=false;btn.innerText='Reintentar orden real';}
   }
 }
 
