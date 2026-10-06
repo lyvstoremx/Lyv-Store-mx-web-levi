@@ -649,10 +649,27 @@
                         <div style="font-size: 0.7rem; color: var(--text-muted);" data-i18n="idBannerSub">Ingresa tu ID y elige tu producto</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; margin-top: 2px;">
-                    <input type="text" id="playerId" placeholder="Ej. 284910294" inputmode="numeric" style="margin-bottom:0; background: rgba(0,0,0,0.8);">
-                    <button class="btn-action" style="width: 52px; padding:0; background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="validarId()">✓</button>
+                <div style="display: flex; gap: 8px; margin-top: 2px; align-items:stretch;">
+                    <input type="text" id="playerId" placeholder="Ej. 284910294" inputmode="numeric" maxlength="12" style="margin-bottom:0; background: rgba(0,0,0,0.8); flex:1; min-width:0;">
+                    <select id="playerRegion" aria-label="Región de Free Fire" style="width:92px;margin:0;background:rgba(0,0,0,0.8);color:#fff;border:1px solid var(--card-border);border-radius:10px;padding:0 7px;font-size:.72rem;">
+                        <option value="SAC">SAC</option>
+                        <option value="NA">NA</option>
+                        <option value="US">US</option>
+                        <option value="BR">BR</option>
+                        <option value="IND">IND</option>
+                        <option value="CIS">CIS</option>
+                        <option value="ID">ID</option>
+                        <option value="PK">PK</option>
+                        <option value="ME">ME</option>
+                        <option value="RU">RU</option>
+                        <option value="SG">SG</option>
+                        <option value="TH">TH</option>
+                        <option value="TW">TW</option>
+                        <option value="VN">VN</option>
+                    </select>
+                    <button id="playerVerifyBtn" class="btn-action" style="width:52px;padding:0;background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;" onclick="validarId(event)">✓</button>
                 </div>
+                <div id="lyvPlayerVerification" aria-live="polite" style="font-size:.75rem;margin-top:6px;color:var(--text-muted);"></div>
             </div>
 
             <!-- VENTAS EN TIEMPO REAL -->
@@ -2309,7 +2326,42 @@ function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.i
 function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
 function seleccionarProd(el,nombre,precio){document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');productoElegido={nombre,precio};}
-function validarId(){const inputId=document.getElementById('playerId').value.trim();if(inputId.length<4){alert('Ingresa un ID válido.');return;}const btn=event?.currentTarget; if(btn){btn.disabled=true;btn.innerText='Verificando ID...';}setTimeout(()=>{idFreeFire=inputId;const card=document.getElementById('playerIdCard');if(card){let msg=document.getElementById('lyvPlayerVerification');if(!msg){msg=document.createElement('div');msg.id='lyvPlayerVerification';msg.style='font-size:.75rem;color:#45e08a;margin-top:6px';card.appendChild(msg);}msg.innerText='✓ ¡Jugador encontrado! Nombre pendiente de conexión con la API oficial.';}if(btn){btn.disabled=false;btn.innerText='Verificar ID';}lyvLog('ID FREE FIRE',`ID ${inputId} preparado para verificación real`);},800);}
+async function validarId(evt){
+    const input=document.getElementById('playerId');
+    const regionEl=document.getElementById('playerRegion');
+    const msg=document.getElementById('lyvPlayerVerification');
+    const btn=evt?.currentTarget || document.getElementById('playerVerifyBtn');
+    const inputId=String(input?.value||'').trim();
+    const region=String(regionEl?.value||'SAC').trim().toUpperCase();
+    if(!/^\d{8,12}$/.test(inputId)){
+        if(msg) msg.innerHTML='<span style="color:#ff8b8b">✗ El ID debe tener entre 8 y 12 dígitos.</span>';
+        input?.focus();
+        return;
+    }
+    if(btn){btn.disabled=true;btn.innerText='…';}
+    if(msg) msg.innerHTML='<span style="color:#ffc107">⏳ Verificando ID...</span>';
+    try{
+        const data=await llamarCleverEndpoint({action:'account_info',uid:inputId,region});
+        if(data?.code!=='ACCOUNT_INFO_OK') throw new Error(data?.message||data?.code||'No se pudo verificar el jugador.');
+        const account=data?.account||{};
+        const nickname=String(account.nickname||'Jugador');
+        const detectedRegion=String(account.region||region).toUpperCase();
+        idFreeFire=inputId;
+        window.lyvFreeFireName=nickname;
+        window.lyvFreeFireRegion=detectedRegion;
+        if(input) input.value=inputId;
+        if(msg) msg.innerHTML='<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>'+escapeHtml(nickname)+'</b> · Región '+escapeHtml(detectedRegion)+'</span>';
+        lyvLog('ID FREE FIRE',`ID ${inputId} verificado por SixoFire · ${nickname} · ${detectedRegion}`);
+    }catch(e){
+        idFreeFire='';
+        window.lyvFreeFireName='';
+        window.lyvFreeFireRegion='';
+        const raw=String(e?.message||e||'No se pudo verificar el jugador.');
+        if(msg) msg.innerHTML='<span style="color:#ff8b8b">✗ '+escapeHtml(raw)+'</span>';
+    }finally{
+        if(btn){btn.disabled=false;btn.innerText='✓';}
+    }
+}
 
 // Redibuja extras al cargar sin alterar el diseño existente.
 window.addEventListener('load',()=>{cargarReportesPagoVisual();productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
