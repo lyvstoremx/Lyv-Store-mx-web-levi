@@ -2465,7 +2465,31 @@ function renderAdminProveedor(){
     if(a){a.textContent=st;a.style.color=st==='Conectado'?'#6ee7a0':'#ffc107';} if(b)b.textContent=sync;if(d)d.textContent=pendientes;
 }
 function marcarPruebaProveedorAdmin(){localStorage.setItem('lyv_provider_status','Prueba local');localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Prueba local registrada; no se llamó a una API real.');alert('Prueba local registrada. La conexión real se hará desde el backend.');}
-function sincronizarProveedorAdminVisual(){localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Sincronización visual solicitada.');alert('Sincronización preparada. La consulta real del proveedor requiere backend.');}
+async function sincronizarProveedorAdminVisual(){
+    const syncBox=document.getElementById('adminProveedorSync');
+    if(syncBox) syncBox.textContent='Consultando SixoFire...';
+    try{
+      const providerId=String(localStorage.getItem('lyv_last_provider_order_id')||'').trim();
+      if(!/^\d+$/.test(providerId)){
+        throw new Error('No hay una orden de proveedor guardada para consultar.');
+      }
+      const data=await llamarCleverEndpoint({action:'shop_order_status',provider_order_id:providerId});
+      if(data?.code!=='SHOP_ORDER_STATUS_OK') throw new Error(data?.message||data?.code||'SixoFire no devolvió el estado.');
+      const status=String(data?.status||'UNKNOWN');
+      localStorage.setItem('lyv_provider_status',status);
+      localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+      renderAdminProveedor();
+      const box=document.getElementById('adminProveedorPruebaResultado');
+      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Estado real consultado.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(providerId)+'</b> · Estado: <b>'+escapeHtml(status)+'</b></span>';
+      lyvLog('SIXOFIRE SHOP_ORDER_STATUS','Estado consultado · provider_order_id '+providerId+' · '+status);
+    }catch(e){
+      localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+      renderAdminProveedor();
+      const box=document.getElementById('adminProveedorPruebaResultado');
+      if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(String(e?.message||e||'Error al consultar el proveedor.'))+'</span>';
+      lyvLog('PROVEEDOR ERROR','Sincronización real: '+String(e?.message||e||'error'));
+    }
+}
 
 async function probarConexionClever(resultadoId='cleverTestResultado'){
   const box=document.getElementById(resultadoId)||document.getElementById('cleverTestResultado');
@@ -2499,7 +2523,11 @@ async function probarOrdenRealSixoFire(){
     }
     const providerId=data?.provider_order_id ?? 'No informado';
     const status=data?.status ?? 'No informado';
+    localStorage.setItem('lyv_last_provider_order_id',String(providerId));
+    localStorage.setItem('lyv_provider_status',String(status));
+    localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
     if(box) box.innerHTML='<span style="color:#6ee7a0">✓ ORDEN REAL CREADA.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(String(providerId))+'</b> · Estado: <b>'+escapeHtml(String(status))+'</b></span>';
+    renderAdminProveedor();
     lyvLog('SIXOFIRE SHOP_ORDER','Orden real creada · UID '+uid+' · producto '+productId+' · provider_order_id '+providerId);
     if(btn){btn.innerText='Orden creada ✓';btn.disabled=true;}
   }catch(e){
