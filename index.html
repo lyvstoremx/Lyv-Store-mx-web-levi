@@ -2355,18 +2355,16 @@ function sincronizarProveedorAdminVisual(){localStorage.setItem('lyv_provider_sy
 
 async function probarConexionClever(resultadoId='cleverTestResultado'){
   const box=document.getElementById(resultadoId)||document.getElementById('cleverTestResultado');
-  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Probando sesión y conexión...</span>';
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Verificando sesión con el backend...</span>';
   try{
-    const testOrderId=(crypto.randomUUID?crypto.randomUUID():('00000000-0000-4000-8000-'+Date.now().toString().padStart(12,'0')));
-    const testKey='test-clever-'+(crypto.randomUUID?crypto.randomUUID():Date.now());
-    await llamarCleverEndpoint({order_id:testOrderId,idempotency_key:testKey});
-    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ El backend respondió correctamente.</span>';
-  }catch(e){
-    const msg=String(e?.message||e||'');
-    if(msg.includes('ORDER_NOT_FOUND') || msg.includes('Orden no encontrada') || msg.includes('404')){
-      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Conexión y autenticación correctas. El backend rechazó la orden de prueba porque no existe, como esperábamos.</span>';
+    const data=await llamarCleverEndpoint({action:'test'});
+    if(data?.code==='AUTHENTICATED'){
+      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Conexión real correcta. Tu sesión fue autenticada por el backend.</span>';
       return;
     }
+    if(box) box.innerHTML='<span style="color:#ffc107">✓ El backend respondió: '+escapeHtml(data?.code||'OK')+'</span>';
+  }catch(e){
+    const msg=String(e?.message||e||'');
     if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
   }
 }
