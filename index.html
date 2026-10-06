@@ -1660,7 +1660,40 @@
 
         let sistemaEnMantenimiento = false;
         let saldoActual = 0.00;
-async function cargarSaldoReal(){try{const data=await llamarCleverEndpoint({action:'wallet_balance'}); if(data?.ok) { saldoActual=Number(data.balance_mxn||0); actualizarPanelesUsuario(); }}catch(e){console.warn('No se pudo cargar saldo real:',e);}}
+async function cargarSaldoReal(){
+  try{
+    const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
+    if(userError) throw userError;
+    if(!user?.id){ saldoActual=0; actualizarPanelesUsuario(); return; }
+
+    // Lectura directa de la billetera propia con RLS: user_id debe ser auth.uid().
+    const {data:wallet,error:walletError}=await lyvSupabase
+      .from('lyv_wallets')
+      .select('balance_mxn')
+      .eq('user_id',user.id)
+      .maybeSingle();
+
+    if(walletError) throw walletError;
+
+    saldoActual=Number(wallet?.balance_mxn ?? 0);
+    actualizarPanelesUsuario();
+
+    // También sincronizamos por backend para validar que la sesión y RPC coinciden.
+    try{
+      const remote=await llamarCleverEndpoint({action:'wallet_balance'});
+      if(remote?.ok && Number.isFinite(Number(remote.balance_mxn))){
+        saldoActual=Number(remote.balance_mxn);
+        actualizarPanelesUsuario();
+      }
+    }catch(e){
+      console.warn('RPC wallet_balance no disponible; se conserva la lectura directa:',e);
+    }
+  }catch(e){
+    console.error('No se pudo cargar saldo real:',e);
+    saldoActual=0;
+    actualizarPanelesUsuario();
+  }
+}
 
         let gastoTotal = 0.00;
         let totalOrdenesCount = 0;
