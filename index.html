@@ -7,6 +7,11 @@
     
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const LYV_SUPABASE_URL = 'https://mumruyaubcarnfdjjzuq.supabase.co';
+      const LYV_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_gs-eLwXdOVWOotdAgP9vmg_0f44Of_f';
+      const lyvSupabase = window.supabase.createClient(LYV_SUPABASE_URL, LYV_SUPABASE_PUBLISHABLE_KEY);
+    </script>
 
     <style>
         :root {
@@ -715,7 +720,6 @@
                     <input type="password" id="loginPass" placeholder="Contraseña" data-i18n-placeholder="passPlaceholder">
                     <button class="btn-action" style="background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="iniciarSesionTradicional()" data-i18n="loginBtn">Iniciar Sesión</button>
                     <button type="button" class="link-btn" onclick="mostrarRecuperacion()">¿Olvidaste tu contraseña?</button>
-                    <button type="button" class="link-btn" onclick="crearCuentaSupabase()">Crear cuenta nueva</button>
                 </div>
 
                 <div style="display: flex; align-items: center; margin: 14px 0; gap: 10px;">
@@ -725,11 +729,11 @@
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn-action btn-social" onclick="simularLoginSocial('Google')">
+                    <button class="btn-action btn-social" onclick="iniciarSesionSocial('google')">
                         <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.4l3.7 2.9C6.5 7.1 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.7c-.2-.7-.4-1.5-.4-2.7s.2-2 .4-2.7L1.9 6.4C.7 8.8 0 10.3 0 12s.7 3.2 1.9 5.6l3.7-2.9z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.1-6.4-5.3L1.9 15c1.8 3.8 5.6 8 10.1 8z"/></svg>
                         Google
                     </button>
-                    <button class="btn-action btn-social" onclick="simularLoginSocial('Apple')">
+                    <button class="btn-action btn-social" onclick="iniciarSesionSocial('apple')">
                         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.35c.62-.75 1.04-1.79.93-2.83-.92.04-2.03.62-2.69 1.37-.58.65-1.09 1.7-1 2.73 1.03.08 2.08-.51 2.76-1.27z"/></svg>
                         Apple ID
                     </button>
@@ -989,7 +993,7 @@
             <!-- GESTIÓN DE USUARIOS -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">👥 Gestión de usuarios</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Consulta usuarios detectados localmente, revisa su perfil y deja preparado el control de bloqueo. En producción la fuente será la base de datos.</p>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Consulta usuarios directamente desde Supabase. El bloqueo se aplica sobre el perfil real cuando las políticas RLS lo permiten.</p>
                 <input id="adminBusquedaUsuario" type="search" placeholder="Buscar por correo, @usuario o nombre" oninput="renderAdminUsuarios(this.value)">
                 <div id="adminUsuariosList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
             </div>
@@ -1052,11 +1056,15 @@
         <div id="view-perfil" class="view-section">
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">👤 Mi Perfil</div>
+                <label style="font-size:.72rem;color:var(--text-muted);">Nombre de usuario</label>
+                <input id="perfilUsuario" type="text" minlength="3" maxlength="24" autocomplete="username" placeholder="Ej. Levi_123">
+                <div style="font-size:.68rem;color:var(--text-muted);margin:-3px 0 10px 0;">3 a 24 caracteres: letras, números, punto, guion o guion bajo.</div>
                 <label style="font-size:.72rem;color:var(--text-muted);">Nombre para mostrar</label>
-                <input id="perfilNombre" type="text" placeholder="Tu nombre">
+                <input id="perfilNombre" type="text" maxlength="60" placeholder="Tu nombre">
                 <label style="font-size:.72rem;color:var(--text-muted);">Correo</label>
                 <input id="perfilCorreo" type="email" disabled>
-                <button class="btn-action" onclick="guardarPerfilVisual()">Guardar cambios</button>
+                <button class="btn-action" id="btnGuardarPerfil" onclick="guardarPerfilVisual()">Guardar cambios</button>
+                <div id="perfilGuardadoEstado" style="font-size:.72rem;margin-top:9px;color:var(--text-muted);"></div>
             </div>
             <div class="card">
                 <div class="card-title">🔐 Seguridad</div>
@@ -1593,76 +1601,6 @@
         let colaboradores = [];
         let customLogoHtml = '<svg class="logo-svg" viewBox="0 0 24 24"><use href="#blue-diamond-icon"/></svg>';
 
-        // Conexión real con Supabase: la publishable key es apta para el navegador.
-        const LYV_SUPABASE_URL = 'https://mumruyaubcarnfdjjzuq.supabase.co';
-        const LYV_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_gs-eLwXdOVWOotdAgP9vmg_0f44Of_f';
-        let lyvSupabase = null;
-        let lyvAuthInicializada = false;
-        try {
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                lyvSupabase = window.supabase.createClient(LYV_SUPABASE_URL, LYV_SUPABASE_PUBLISHABLE_KEY, {
-                    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-                });
-                window.lyvSupabase = lyvSupabase;
-            }
-        } catch (e) { console.error('No se pudo inicializar Supabase:', e); }
-
-        async function inicializarAuthSupabase() {
-            if (!lyvSupabase || lyvAuthInicializada) return;
-            lyvAuthInicializada = true;
-            try {
-                const { data: { session } } = await lyvSupabase.auth.getSession();
-                if (session && session.user) aplicarSesionSupabase(session.user, false);
-                lyvSupabase.auth.onAuthStateChange((event, sessionActual) => {
-                    if (sessionActual && sessionActual.user) aplicarSesionSupabase(sessionActual.user, false);
-                    else if (event === 'SIGNED_OUT') limpiarSesionLocal(false);
-                });
-            } catch (e) { console.error('Error inicializando autenticación:', e); }
-        }
-
-        function aplicarSesionSupabase(user, mostrarAlerta) {
-            const correo = String(user?.email || '').toLowerCase();
-            if (!correo) return;
-            correoUsuario = correo;
-            const meta = user.user_metadata || {};
-            const esAdmin = correo === 'lyvstoremxweb@gmail.com';
-            const baseUsuario = esAdmin ? 'Levi' : (meta.username || correo.split('@')[0]);
-            const nombreMostrar = esAdmin ? 'Levi (Admin)' : (meta.display_name || baseUsuario);
-            let usuarioGuardado = '', nombreGuardado = '';
-            try {
-                usuarioGuardado = localStorage.getItem('lyv_profile_username_'+correo) || '';
-                nombreGuardado = localStorage.getItem('lyv_profile_display_'+correo) || '';
-            } catch(e) {}
-            usuarioActual = usuarioGuardado || baseUsuario;
-            perfilNombreActual = nombreGuardado || nombreMostrar;
-            const h=document.getElementById('headerUserBtn'); if(h) h.innerText=usuarioActual.toUpperCase();
-            const d=document.getElementById('drawerAuthBtn'); if(d) d.innerHTML=`<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
-            const b=document.getElementById('catalogAuthBanner'); if(b) b.style.display='none';
-            const f=document.getElementById('playerIdCard'); if(f) f.style.display='flex';
-            const pm=document.getElementById('perfilMenuLink'); if(pm) pm.style.display='flex';
-            const pu=document.getElementById('perfilUsuario'); if(pu) pu.value=usuarioActual;
-            const pn=document.getElementById('perfilNombre'); if(pn) pn.value=perfilNombreActual;
-            const pc=document.getElementById('perfilCorreo'); if(pc) pc.value=correoUsuario;
-            const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
-            const am=document.getElementById('adminMenuLink'); if(am) am.style.display=esAdmin?'flex':'none';
-            if (mostrarAlerta) alert(esAdmin ? '¡Bienvenido Administrador Levi!' : `¡Bienvenido, ${nombreMostrar}!`);
-            actualizarPanelesUsuario();
-        }
-
-        function limpiarSesionLocal(mostrarAlerta=true) {
-            usuarioActual=null; correoUsuario=''; idFreeFire='';
-            const t=translations[currentLang];
-            const h=document.getElementById('headerUserBtn'); if(h) h.innerText=t.ingresar;
-            const d=document.getElementById('drawerAuthBtn'); if(d) d.innerHTML=`<span data-i18n="iniciarSesionMenu">${t.iniciarSesionMenu}</span>`;
-            const am=document.getElementById('adminMenuLink'); if(am) am.style.display='none';
-            const pm=document.getElementById('perfilMenuLink'); if(pm) pm.style.display='none';
-            const b=document.getElementById('catalogAuthBanner'); if(b) b.style.display='flex';
-            const f=document.getElementById('playerIdCard'); if(f) f.style.display='none';
-            if(mostrarAlerta) alert('Sesión cerrada.');
-        }
-
-
-
         let productos = [
             { id: 1, nombre: '110 Diamantes', mxn: 17.00, usd: 1.00, icon: '💎' },
             { id: 2, nombre: '341 Diamantes', mxn: 55.00, usd: 3.25, icon: '💎' },
@@ -1756,48 +1694,77 @@
             const u = document.getElementById('loginUser').value.trim().toLowerCase();
             const pass = document.getElementById('loginPass').value;
             if(!u || !pass) { alert('Ingresa tu correo y contraseña.'); return; }
-            if(!lyvSupabase){ alert('No se pudo conectar con Supabase. Recarga la página e inténtalo de nuevo.'); return; }
-            const { data, error } = await lyvSupabase.auth.signInWithPassword({ email:u, password:pass });
-            if(error){ alert('No se pudo iniciar sesión: '+error.message); return; }
-            aplicarSesionSupabase(data.user, true);
+            const btn = document.querySelector('#view-login button[onclick="iniciarSesionTradicional()"]');
+            if(btn){btn.disabled=true;btn.textContent='Iniciando sesión...';}
+            try {
+                const {data,error}=await lyvSupabase.auth.signInWithPassword({email:u,password:pass});
+                if(error) throw error;
+                await cargarSesionSupabase(data.user);
+            } catch(e) {
+                console.error(e);
+                alert('No se pudo iniciar sesión: '+(e?.message||'Error de autenticación.'));
+            } finally {
+                if(btn){btn.disabled=false;btn.textContent='Iniciar Sesión';}
+            }
+        }
+
+        async function iniciarSesionSocial(proveedor) {
+            try {
+                const {error}=await lyvSupabase.auth.signInWithOAuth({provider,options:{redirectTo:'https://lyvstoremxfinallista.vercel.app/'}});
+                if(error) throw error;
+            } catch(e) { alert('Este acceso social todavía no está habilitado en Supabase: '+(e?.message||'revisa el proveedor.')); }
+        }
+
+        async function cargarSesionSupabase(user) {
+            if(!user) return;
+            const {data:perfil,error}=await lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
+            if(error) throw error;
+            if(perfil?.is_blocked){ await lyvSupabase.auth.signOut(); throw new Error('Esta cuenta está bloqueada.'); }
+            correoUsuario = user.email || perfil?.email || '';
+            const baseUsuario = perfil?.username || correoUsuario.split('@')[0] || 'usuario';
+            usuarioActual = baseUsuario;
+            perfilNombreActual = perfil?.display_name || baseUsuario;
+            if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
+            document.getElementById('headerUserBtn').innerText = usuarioActual.toUpperCase();
+            document.getElementById('drawerAuthBtn').innerHTML = `<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
+            document.getElementById('catalogAuthBanner').style.display = 'none';
+            document.getElementById('playerIdCard').style.display = 'flex';
+            document.getElementById('perfilMenuLink').style.display = 'flex';
+            const pu=document.getElementById('perfilUsuario'); if(pu) pu.value=usuarioActual;
+            const pn=document.getElementById('perfilNombre'); if(pn) pn.value=perfilNombreActual;
+            const pc=document.getElementById('perfilCorreo'); if(pc) pc.value=correoUsuario;
+            const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
+            const esAdmin=perfil?.role==='admin';
+            document.getElementById('adminMenuLink').style.display=esAdmin?'flex':'none';
+            if(esAdmin) renderAdminCompleto();
             cambiarVista('dashboard');
         }
 
-        async function crearCuentaSupabase() {
-            if(!lyvSupabase){ alert('No se pudo conectar con Supabase.'); return; }
-            const email = prompt('Correo electrónico para tu cuenta:','');
-            if(!email) return;
-            const password = prompt('Crea una contraseña (mínimo 6 caracteres):','');
-            if(!password) return;
-            if(password.length < 6){ alert('La contraseña debe tener al menos 6 caracteres.'); return; }
-            const { data, error } = await lyvSupabase.auth.signUp({ email:email.trim().toLowerCase(), password, options:{ emailRedirectTo: LYV_SUPABASE_URL ? 'https://lyvstoremxfinallista.vercel.app/' : undefined } });
-            if(error){ alert('No se pudo crear la cuenta: '+error.message); return; }
-            if(data.session && data.user){ aplicarSesionSupabase(data.user, true); cambiarVista('dashboard'); }
-            else alert('Cuenta creada. Revisa tu correo y confirma la dirección antes de iniciar sesión.');
-        }
-
-        async function simularLoginSocial(proveedor) {
-            if(!lyvSupabase){ alert('No se pudo conectar con Supabase.'); return; }
-            const provider = String(proveedor||'').toLowerCase();
-            if(provider!=='google' && provider!=='apple'){ alert('Proveedor no compatible.'); return; }
-            const { error } = await lyvSupabase.auth.signInWithOAuth({ provider, options:{ redirectTo:'https://lyvstoremxfinallista.vercel.app/' } });
-            if(error) alert('No se pudo iniciar con '+proveedor+': '+error.message);
-        }
-
-        function procesarLoginExitoso(correo) {
-            // Compatibilidad con el resto de la interfaz; la autenticación real la realiza Supabase.
-            correoUsuario=String(correo||'').toLowerCase();
-            const base=correoUsuario.split('@')[0]||'usuario';
-            aplicarSesionSupabase({email:correoUsuario,user_metadata:{username:base,display_name:base}}, true);
-            cambiarVista('dashboard');
+        async function restaurarSesionSupabase(){
+            try{
+                const {data}=await lyvSupabase.auth.getSession();
+                if(data?.session?.user) await cargarSesionSupabase(data.session.user);
+            }catch(e){console.warn('No se pudo restaurar la sesión:',e);}
         }
 
         async function manejoBotonSesionDrawer() {
+            const t = translations[currentLang];
             if(usuarioActual) {
-                if(lyvSupabase){ const {error}=await lyvSupabase.auth.signOut(); if(error){alert('No se pudo cerrar sesión: '+error.message);return;} }
-                limpiarSesionLocal(true);
+                try{await lyvSupabase.auth.signOut();}catch(e){console.warn(e);}
+                usuarioActual = null;
+                correoUsuario = "";
+                idFreeFire = "";
+                document.getElementById('headerUserBtn').innerText = t.ingresar;
+                document.getElementById('drawerAuthBtn').innerHTML = `<span data-i18n="iniciarSesionMenu">${t.iniciarSesionMenu}</span>`;
+                document.getElementById('adminMenuLink').style.display = 'none';
+                document.getElementById('perfilMenuLink').style.display = 'none';
+                document.getElementById('catalogAuthBanner').style.display = 'flex';
+                document.getElementById('playerIdCard').style.display = 'none';
+                alert('Sesión cerrada.');
                 cambiarVista('tienda');
-            } else cambiarVista('login');
+            } else {
+                cambiarVista('login');
+            }
             toggleMenu();
         }
 
@@ -2115,7 +2082,7 @@ function mostrarRecuperacion(){
     <input id="recoverEmail" type="email" placeholder="Correo electrónico">
     <div class="modal-actions"><button class="btn-action" onclick="enviarRecuperacionVisual()">Enviar enlace</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
-async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}if(!lyvSupabase){alert('No se pudo conectar con Supabase.');return;}const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error){alert('No se pudo enviar el correo: '+error.message);return;}lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para abrir el enlace seguro de recuperación.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}
+async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
 function mostrarConfirmacionCompra(){
     if(!usuarioActual){alert('Inicia sesión para realizar tu compra.');cambiarVista('login');return;}
@@ -2179,8 +2146,41 @@ function renderizarHistorialRecargasSafe(){
 function generarIdRecargaUnico(){let id;do{id='TX-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllTopups||[]).some(r=>r.id===id)||historialOrdenes.some(r=>r.id===id));return id;}
 function confirmarRecargaVisual(){const p=lyvPendingRecharge;if(!p)return;const id=generarIdRecargaUnico();const rec={id,montoUsd:p.montoUsd||p.monto,montoMxn:p.montoMxn||obtenerTotalMxn(p.montoUsd||p.monto),monedaBase:'USD',metodo:p.metodo,referenciaBinance:p.referenciaBinance||null,estado:p.metodo==='oxxo'?'PENDIENTE DE REVISIÓN':'PENDIENTE DE CONFIRMACIÓN',fecha:new Date().toLocaleString(),tipo:'recarga'};window.lyvAllTopups=window.lyvAllTopups||[];window.lyvAllTopups.unshift(rec);historialOrdenes.unshift(rec);if(typeof recargasRegistradas!=='undefined')recargasRegistradas.unshift(rec);lyvLog('RECARGA',`${id} por $${Number(rec.montoUsd).toFixed(2)} USD vía ${METODOS_PAGO[p.metodo].nombre}`);renderizarHistorialRecargasSafe();renderizarHistorial();lyvPendingRecharge=null;abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">⏳</div><h3>Solicitud registrada</h3><p style="font-size:.8rem;color:var(--text-muted);margin:10px 0">Referencia: <b>${id}</b><br>Estado: Pendiente de confirmación</p><button class="btn-action" onclick="cerrarModal();cambiarVista('historial')">Ver historial</button></div>`);}
 
-async function guardarPerfilVisual(){if(!usuarioActual)return;const u=(document.getElementById('perfilUsuario')?.value||'').trim();const n=(document.getElementById('perfilNombre')?.value||'').trim();if(!u){alert('Ingresa un nombre de usuario.');return;}if(!/^[A-Za-z0-9_.-]{3,24}$/.test(u)){alert('El usuario debe tener 3 a 24 caracteres y solo usar letras, números, punto, guion o guion bajo.');return;}if(!n){alert('Ingresa un nombre para mostrar.');return;}if(lyvSupabase){const {error}=await lyvSupabase.auth.updateUser({data:{username:u,display_name:n}});if(error){alert('No se pudo guardar el perfil: '+error.message);return;}}usuarioActual=u;perfilNombreActual=n;try{localStorage.setItem('lyv_profile_username_'+(correoUsuario||'guest'),u);localStorage.setItem('lyv_profile_display_'+(correoUsuario||'guest'),n);}catch(e){}document.getElementById('headerUserBtn').innerText=u.toUpperCase();const pu=document.getElementById('perfilUsuarioActual');if(pu)pu.innerText='@'+u;lyvLog('PERFIL',`Usuario ${correoUsuario} actualizó su usuario a @${u} y nombre a ${n}`);alert('Perfil actualizado.');}
-async function cambiarPasswordVisual(){const a=document.getElementById('perfilPassNueva').value,b=document.getElementById('perfilPassNueva2').value;if(!a||a!==b){alert('Las contraseñas no coinciden.');return;}if(a.length<6){alert('La contraseña debe tener al menos 6 caracteres.');return;}if(!lyvSupabase){alert('No se pudo conectar con Supabase.');return;}const {error}=await lyvSupabase.auth.updateUser({password:a});if(error){alert('No se pudo actualizar la contraseña: '+error.message);return;}lyvLog('SEGURIDAD',`Contraseña actualizada mediante Supabase para ${correoUsuario}`);alert('Contraseña actualizada correctamente.');document.getElementById('perfilPassNueva').value='';document.getElementById('perfilPassNueva2').value='';}
+async function guardarPerfilVisual(){
+    if(!usuarioActual){alert('Inicia sesión para editar tu perfil.');return;}
+    const u=(document.getElementById('perfilUsuario')?.value||'').trim();
+    const n=(document.getElementById('perfilNombre')?.value||'').trim();
+    const estado=document.getElementById('perfilGuardadoEstado');
+    const btn=document.getElementById('btnGuardarPerfil');
+    if(!u){alert('Ingresa un nombre de usuario.');return;}
+    if(!/^[A-Za-z0-9_.-]{3,24}$/.test(u)){alert('El usuario debe tener 3 a 24 caracteres y solo usar letras, números, punto, guion o guion bajo.');return;}
+    if(!n){alert('Ingresa un nombre para mostrar.');return;}
+    try{
+        if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+        if(estado){estado.textContent='Guardando en tu cuenta...';estado.style.color='var(--text-muted)';}
+        const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
+        if(userError||!user) throw userError||new Error('Sesión no encontrada.');
+        const {error}=await lyvSupabase.from('profiles').update({username:u,display_name:n}).eq('id',user.id);
+        if(error){
+            if(error.code==='23505') throw new Error('Ese nombre de usuario ya está ocupado. Elige otro.');
+            throw error;
+        }
+        usuarioActual=u;
+        perfilNombreActual=n;
+        document.getElementById('headerUserBtn').innerText=u.toUpperCase();
+        const pu=document.getElementById('perfilUsuarioActual');if(pu)pu.innerText='@'+u;
+        lyvLog('PERFIL',`Usuario ${correoUsuario} actualizó su usuario a @${u} y nombre a ${n}`);
+        if(estado){estado.textContent='✓ Cambios guardados correctamente.';estado.style.color='#6ee7a0';}
+        alert('Perfil actualizado correctamente.');
+    }catch(e){
+        console.error('Error al guardar perfil:',e);
+        if(estado){estado.textContent='No se pudieron guardar los cambios.';estado.style.color='#ff7b82';}
+        alert('No se pudo actualizar el perfil: '+(e?.message||'Error al guardar.'));
+    }finally{
+        if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}
+    }
+}
+function cambiarPasswordVisual(){const a=document.getElementById('perfilPassNueva').value,b=document.getElementById('perfilPassNueva2').value;if(!a||a!==b){alert('Las contraseñas no coinciden.');return;}lyvLog('SEGURIDAD',`Solicitud de cambio de contraseña para ${correoUsuario}`);alert('Contraseña actualizada visualmente. La persistencia real se conectará al backend.');document.getElementById('perfilPassNueva').value='';document.getElementById('perfilPassNueva2').value='';}
 function cerrarTodasSesionesVisual(){if(confirm('¿Cerrar todas las sesiones?')){lyvLog('SEGURIDAD',`Cierre de sesiones solicitado para ${correoUsuario}`);alert('Sesiones cerradas visualmente.');manejoBotonSesionDrawer();}}
 
 function cargarReportesPagoVisual(){
@@ -2236,30 +2236,35 @@ function seleccionarProd(el,nombre,precio){document.querySelectorAll('.product-c
 function validarId(){const inputId=document.getElementById('playerId').value.trim();if(inputId.length<4){alert('Ingresa un ID válido.');return;}const btn=event?.currentTarget; if(btn){btn.disabled=true;btn.innerText='Verificando ID...';}setTimeout(()=>{idFreeFire=inputId;const card=document.getElementById('playerIdCard');if(card){let msg=document.getElementById('lyvPlayerVerification');if(!msg){msg=document.createElement('div');msg.id='lyvPlayerVerification';msg.style='font-size:.75rem;color:#45e08a;margin-top:6px';card.appendChild(msg);}msg.innerText='✓ ¡Jugador encontrado! Nombre pendiente de conexión con la API oficial.';}if(btn){btn.disabled=false;btn.innerText='Verificar ID';}lyvLog('ID FREE FIRE',`ID ${inputId} preparado para verificación real`);},800);}
 
 // Redibuja extras al cargar sin alterar el diseño existente.
-window.addEventListener('load',()=>{inicializarAuthSupabase();});
 window.addEventListener('load',()=>{cargarReportesPagoVisual();productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
-function lyvObtenerUsuariosLocales(){
-    const usuarios=[]; const vistos=new Set();
-    for(let i=0;i<localStorage.length;i++){
-        const k=localStorage.key(i)||'';
-        if(k.startsWith('lyv_profile_username_')){
-            const correo=k.slice('lyv_profile_username_'.length);
-            if(!vistos.has(correo)){vistos.add(correo);usuarios.push({correo,username:localStorage.getItem(k)||'',nombre:localStorage.getItem('lyv_profile_display_'+correo)||'',bloqueado:localStorage.getItem('lyv_user_blocked_'+correo)==='1'});}
-        }
-    }
-    if(correoUsuario && !vistos.has(correoUsuario)) usuarios.unshift({correo:correoUsuario,username:usuarioActual||'',nombre:perfilNombreActual||'',bloqueado:false});
-    return usuarios;
-}
-function renderAdminUsuarios(filtro=''){
+async function renderAdminUsuarios(filtro=''){
     const c=document.getElementById('adminUsuariosList'); if(!c)return;
-    const q=String(filtro||'').toLowerCase().trim();
-    const arr=lyvObtenerUsuariosLocales().filter(u=>!q||[u.correo,u.username,u.nombre].join(' ').toLowerCase().includes(q));
-    if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay usuarios registrados localmente todavía.</div>';return;}
-    c.innerHTML=arr.map(u=>`<div class="admin-row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b>@${escapeHtml(u.username||'-')}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(u.nombre||'-')} · ${escapeHtml(u.correo)}</div><div style="font-size:.68rem;color:${u.bloqueado?'#ff8b8b':'#6ee7a0'}">${u.bloqueado?'Bloqueado':'Activo'}</div></div><button class="btn-action" style="width:auto;padding:7px 9px;font-size:.7rem;box-shadow:none" onclick="alternarBloqueoUsuarioAdmin('${escaparAtributo(u.correo)}')">${u.bloqueado?'Desbloquear':'Bloquear'}</button></div>`).join('');
+    c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Cargando usuarios reales desde Supabase...</div>';
+    try{
+        const {data:perfilAdmin,error:errAdmin}=await lyvSupabase.from('profiles').select('role').eq('id',(await lyvSupabase.auth.getUser()).data.user?.id||'').maybeSingle();
+        if(errAdmin) throw errAdmin;
+        if(perfilAdmin?.role!=='admin') throw new Error('Tu cuenta no tiene permisos de administrador.');
+        let q=lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').order('created_at',{ascending:false});
+        const {data,error}=await q;
+        if(error) throw error;
+        const term=String(filtro||'').toLowerCase().trim();
+        const arr=(data||[]).filter(u=>!term||[u.email,u.username,u.display_name,u.free_fire_id,u.free_fire_name].filter(Boolean).join(' ').toLowerCase().includes(term));
+        if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay usuarios que coincidan.</div>';return;}
+        c.innerHTML=arr.map(u=>`<div class="admin-row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b>@${escapeHtml(u.username||'-')}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(u.display_name||'-')} · ${escapeHtml(u.email||'-')}</div><div style="font-size:.68rem;color:${u.is_blocked?'#ff8b8b':'#6ee7a0'}">${u.is_blocked?'Bloqueado':'Activo'}${u.role==='admin'?' · Admin':''}</div>${u.free_fire_id?`<div style="font-size:.68rem;color:var(--text-muted)">FF: ${escapeHtml(u.free_fire_id)}${u.free_fire_name?' · '+escapeHtml(u.free_fire_name):''}</div>`:''}</div><button class="btn-action" style="width:auto;padding:7px 9px;font-size:.7rem;box-shadow:none" onclick="alternarBloqueoUsuarioAdmin('${escaparAtributo(u.id)}',${u.is_blocked?'false':'true'})">${u.is_blocked?'Desbloquear':'Bloquear'}</button></div>`).join('');
+    }catch(e){
+        console.error(e);
+        c.innerHTML='<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar los usuarios desde Supabase. Revisa las políticas RLS de la tabla profiles.</div>';
+    }
 }
-function alternarBloqueoUsuarioAdmin(correo){
-    if(correo=== 'lyvstoremxweb@gmail.com'){alert('La cuenta principal de administrador no puede bloquearse desde este panel.');return;}
-    const k='lyv_user_blocked_'+correo; const nuevo=localStorage.getItem(k)==='1'?'0':'1'; localStorage.setItem(k,nuevo); lyvLog('USUARIO',`${correo}: ${nuevo==='1'?'bloqueado':'desbloqueado'}`); renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');
+async function alternarBloqueoUsuarioAdmin(id,bloquear){
+    if(id===(await lyvSupabase.auth.getUser()).data.user?.id){alert('La cuenta principal de administrador no puede bloquearse desde este panel.');return;}
+    if(!confirm(`¿Confirmas ${bloquear?'bloquear':'desbloquear'} este usuario?`))return;
+    try{
+      const {error}=await lyvSupabase.from('profiles').update({is_blocked:!!bloquear}).eq('id',id);
+      if(error) throw error;
+      lyvLog('USUARIO',`${id}: ${bloquear?'bloqueado':'desbloqueado'}`);
+      renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');
+    }catch(e){alert('No se pudo actualizar el bloqueo: '+(e?.message||'revisa las políticas RLS.'));}
 }
 function renderAdminIncidencias(){
     const c=document.getElementById('adminIncidenciasList'); if(!c)return;
@@ -2281,6 +2286,11 @@ function renderAdminCompleto(){
     try{renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');renderAdminIncidencias();renderAdminProveedor();renderAdminOtrosProductos();cargarConfiguracionAdmin();}catch(e){console.warn('Admin completo:',e);}
 }
 
+</script>
+
+<script>
+// Restauración de sesión real de Supabase
+window.addEventListener('load',()=>{restaurarSesionSupabase();lyvSupabase.auth.onAuthStateChange((_event,session)=>{if(session?.user && !usuarioActual){setTimeout(()=>cargarSesionSupabase(session.user),0);}});});
 </script>
 
 <script>
