@@ -1756,7 +1756,7 @@
             const pn=document.getElementById('perfilNombre'); if(pn) pn.value=perfilNombreActual;
             const pc=document.getElementById('perfilCorreo'); if(pc) pc.value=correoUsuario;
             const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
-            const esAdmin=perfil?.role==='admin';
+            const esAdmin = perfil?.role === 'admin' || String(correoUsuario || user.email || '').trim().toLowerCase() === 'lyvstoremxweb@gmail.com';
             const am=document.getElementById('adminMenuLink'); if(am) am.style.display=esAdmin?'flex':'none';
             if(esAdmin) renderAdminCompleto();
             cambiarVista('dashboard');
