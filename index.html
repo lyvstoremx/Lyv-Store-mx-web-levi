@@ -2307,7 +2307,7 @@ async function confirmarCompraVisual(){
 
     // En modo prueba se permite enviar la orden aunque el saldo de la tienda sea 0.
     // NO se descuenta saldo local mientras estamos probando.
-    const modoPrueba=window.LYV_SIXOFIRE_TEST_MODE===true;
+    const modoPrueba=true;
     if(!modoPrueba && saldoActual<p.total){
         alert('Saldo insuficiente para esa cantidad.');
         cambiarVista('billetera');
@@ -2537,9 +2537,86 @@ function rechazarReporteOxxo(id){
 function cargarCreditosManualesVisual(){try{window.lyvManualCredits=JSON.parse(localStorage.getItem('lyv_manual_credits')||'[]')||[];}catch(e){window.lyvManualCredits=[];}renderAdminCreditosManuales();}
 function persistirCreditosManualesVisual(){try{localStorage.setItem('lyv_manual_credits',JSON.stringify((window.lyvManualCredits||[]).slice(0,100)));}catch(e){}}
 function renderAdminCreditosManuales(){const c=document.getElementById('adminCreditosManuales');if(!c)return;const arr=window.lyvManualCredits||[];c.innerHTML=arr.length?arr.map(x=>`<div class="admin-row" style="margin-top:7px;align-items:flex-start;gap:8px"><div style="flex:1"><b>${escapeHtml(x.ajusteId)}</b><div style="font-size:.72rem;color:var(--text-muted)">Usuario: ${escapeHtml(x.usuarioId)} • +$${Number(x.monto||0).toFixed(2)} MXN</div><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(x.motivo||'Sin motivo')} • ${escapeHtml(x.fecha)}</div><div style="font-size:.68rem;color:#6ee7a0">Registrado por: ${escapeHtml(x.admin||'admin')}</div></div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Todavía no hay ajustes manuales.</div>';}
-function acreditarCreditoAdminVisual(){const uid=(document.getElementById('adminCreditoUsuarioId')?.value||'').trim();const montoEl=document.getElementById('adminCreditoMonto');const rawMonto=String(montoEl?.value ?? '').replace(',','.').trim();const monto=Number.isFinite(montoEl?.valueAsNumber)?Number(montoEl.valueAsNumber):Number(rawMonto);const motivo=(document.getElementById('adminCreditoMotivo')?.value||'').trim();if(!uid){alert('Ingresa el ID del usuario.');return;}if(!Number.isFinite(monto)||monto<=0){alert('Ingresa un monto válido mayor a 0.');return;}if(!motivo){alert('Indica el motivo del ajuste.');return;}const ajusteId='AJU-'+String(Date.now()).slice(-8);if(!confirm(`¿Acreditar $${monto.toFixed(2)} MXN al usuario ${uid}?\n\nMotivo: ${motivo}\nID de ajuste: ${ajusteId}`))return;window.lyvManualCredits=window.lyvManualCredits||[];window.lyvManualCredits.unshift({ajusteId,usuarioId:uid,monto,moneda:'MXN',motivo,admin:correoUsuario||'admin',fecha:new Date().toLocaleString()});persistirCreditosManualesVisual();
-    const uidNorm=uid.toLowerCase(); const soyYo=[String(correoUsuario||''),String(usuarioActual||'')].map(x=>x.trim().toLowerCase()).includes(uidNorm);
-    if(soyYo){saldoActual=Number((saldoActual+monto).toFixed(2));try{localStorage.setItem('lyv_saldo_prueba_'+String(correoUsuario||usuarioActual),String(saldoActual));}catch(e){} actualizarPanelesUsuario();}lyvLog('CRÉDITO MANUAL',`${ajusteId}: +$${monto.toFixed(2)} MXN a ${uid} — ${motivo}`);renderAdminCreditosManuales();const out=document.getElementById('adminCreditoResultado');if(out)out.innerHTML=`<div style="padding:9px;border-radius:10px;border:1px solid rgba(110,231,160,.25);background:rgba(110,231,160,.06);font-size:.72rem;color:#6ee7a0">✓ Ajuste ${ajusteId} preparado y registrado visualmente. El backend deberá acreditar el saldo real de forma atómica y única.</div>`;document.getElementById('adminCreditoUsuarioId').value='';document.getElementById('adminCreditoMonto').value='';document.getElementById('adminCreditoMotivo').value='';}
+function acreditarCreditoAdminVisual(){
+    const uidEl=document.getElementById('adminCreditoUsuarioId');
+    const montoEl=document.getElementById('adminCreditoMonto');
+    const motivoEl=document.getElementById('adminCreditoMotivo');
+
+    const uid=String(uidEl?.value ?? '').trim();
+    const rawMonto=String(montoEl?.value ?? '').trim().replace(',', '.');
+    const monto=parseFloat(rawMonto);
+    const motivo=String(motivoEl?.value ?? '').trim();
+
+    if(!uid){
+        alert('Ingresa el ID del usuario.');
+        return;
+    }
+
+    if(!rawMonto || !Number.isFinite(monto) || monto<=0){
+        alert('Ingresa un monto válido mayor a 0. Ejemplo: 10');
+        return;
+    }
+
+    if(!motivo){
+        alert('Indica el motivo del ajuste.');
+        return;
+    }
+
+    const montoFinal=Number(monto.toFixed(2));
+    const ajusteId='AJU-'+String(Date.now()).slice(-8);
+
+    if(!confirm(`¿Acreditar $${montoFinal.toFixed(2)} MXN?\\n\\nUsuario/ID: ${uid}\\nMotivo: ${motivo}\\nID de ajuste: ${ajusteId}`)){
+        return;
+    }
+
+    // MODO PRUEBA: suma saldo local para probar todo el flujo.
+    saldoActual=Number((Number(saldoActual||0)+montoFinal).toFixed(2));
+
+    try{
+        localStorage.setItem(
+            'lyv_saldo_prueba_'+String(correoUsuario||usuarioActual||uid),
+            String(saldoActual)
+        );
+    }catch(e){
+        console.warn('No se pudo guardar el saldo local:',e);
+    }
+
+    window.lyvManualCredits=window.lyvManualCredits||[];
+    window.lyvManualCredits.unshift({
+        ajusteId,
+        usuarioId:uid,
+        monto:montoFinal,
+        moneda:'MXN',
+        motivo,
+        admin:correoUsuario||'admin',
+        fecha:new Date().toLocaleString(),
+        modo:'PRUEBA'
+    });
+
+    persistirCreditosManualesVisual();
+    actualizarPanelesUsuario();
+    lyvLog(
+        'CRÉDITO MANUAL PRUEBA',
+        `${ajusteId}: +$${montoFinal.toFixed(2)} MXN a ${uid} — ${motivo}`
+    );
+    renderAdminCreditosManuales();
+
+    const out=document.getElementById('adminCreditoResultado');
+    if(out){
+        out.innerHTML=`
+          <div style="padding:10px;border-radius:10px;border:1px solid rgba(110,231,160,.3);background:rgba(110,231,160,.07);font-size:.74rem;color:#6ee7a0">
+            ✓ Crédito de prueba aplicado: <b>+$${montoFinal.toFixed(2)} MXN</b><br>
+            ID de ajuste: <b>${escapeHtml(ajusteId)}</b><br>
+            Saldo actual de prueba: <b>$${saldoActual.toFixed(2)} MXN</b>
+          </div>`;
+    }
+
+    if(uidEl) uidEl.value='';
+    if(montoEl) montoEl.value='';
+    if(motivoEl) motivoEl.value='';
+
+    alert(`Crédito aplicado. Saldo de prueba: $${saldoActual.toFixed(2)} MXN`);
+}
 
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
