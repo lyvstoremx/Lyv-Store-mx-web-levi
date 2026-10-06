@@ -680,7 +680,7 @@
             <!-- VENTAS EN TIEMPO REAL -->
             <div id="liveSalesTicker" style="background: rgba(255, 91, 99, 0.08); border: 1px solid rgba(255, 91, 99, 0.25); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">
                 <span style="font-size: 1rem;">🔥</span>
-                <div id="liveSalesText"><b>Alex***</b> compró <b>110 Diamantes</b> hace un momento.</div>
+                <div id="liveSalesText">🟢 Pedidos procesados de forma segura mediante SixoFire.</div>
             </div>
 
             <!-- CATÁLOGO DINÁMICO -->
@@ -958,7 +958,7 @@
                 <div style="display:grid;gap:7px;font-size:.74rem;">
                     <div class="admin-row"><span>Mercado Pago</span><span style="color:#6ee7a0">Preparado para backend/webhook</span></div>
                     <div class="admin-row"><span>Binance</span><span style="color:#6ee7a0">Preparado para confirmación real</span></div>
-                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#ffc107">Pendiente de conexión backend</span></div>
+                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">SixoFire conectado por backend</span></div>
                     <div class="admin-row"><span>Comprobantes OXXO</span><span style="color:#6ee7a0">Revisión manual activada</span></div>
                 </div>
             </div>
@@ -1062,7 +1062,7 @@
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">🔌 Proveedor / API Free Fire</div>
                 <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Panel de control preparado para la conexión real. Nunca coloques la API key en este HTML.</p>
-                <div class="admin-row"><span>Estado de conexión</span><b id="adminProveedorEstado" style="color:#ffc107">No conectado</b></div>
+                <div class="admin-row"><span>Estado de conexión</span><b id="adminProveedorEstado" style="color:#6ee7a0">Conectado</b></div>
                 <div class="admin-row"><span>Última sincronización</span><span id="adminProveedorSync">Nunca</span></div>
                 <div class="admin-row"><span>Órdenes pendientes</span><span id="adminProveedorPendientes">0</span></div>
                 <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -1072,7 +1072,7 @@
                 </div>
                 <div id="adminProveedorPruebaResultado" style="font-size:.72rem;margin-top:9px;"></div>
                 <div id="adminProveedorCatalogoResultado" style="font-size:.72rem;margin-top:9px;"></div>
-                <div style="margin-top:12px;padding:12px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05);">
+                <div id="sixoFireRealTestBox" style="display:none;margin-top:12px;padding:12px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05);">
                     <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
@@ -1752,7 +1752,7 @@ async function cargarSaldoReal(){
             { id: 5, nombre: '2398 Diamantes', mxn: 300.00, usd: 17.65, icon: '💎' },
             { id: 6, nombre: '6160 Diamantes', mxn: 670.00, usd: 39.40, icon: '💎' },
             { id: 7, nombre: 'Pase Booyah', mxn: 45.00, usd: 2.65, icon: '🎟' },
-            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩' },
+            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, provider_product_id: '17729', icon: '🧩' },
             { id: 9, nombre: 'Caja de Fragmentos', mxn: 3.5, usd: 0.19, icon: '📦' }
         ];
 
@@ -1762,18 +1762,7 @@ async function cargarSaldoReal(){
             renderizarTienda();
             iniciarVentasEnTiempoReal();
         };
-
-        const nombresFake = ["Carlos", "Alex", "Daniel", "Kevin", "Luis", "Diego", "Mario", "Javier", "Josue", "Bryan"];
-        function iniciarVentasEnTiempoReal() {
-            setInterval(() => {
-                const nombreAleatorio = nombresFake[Math.floor(Math.random() * nombresFake.length)] + "***";
-                const prodAleatorio = productos[Math.floor(Math.random() * productos.length)].nombre;
-                const tickerText = document.getElementById('liveSalesText');
-                if(tickerText) {
-                    tickerText.innerHTML = `<b>${nombreAleatorio}</b> compró <b>${prodAleatorio}</b> hace un momento.`;
-                }
-            }, 6000);
-        }
+        function iniciarVentasEnTiempoReal() { /* Desactivado: no mostramos ventas ficticias. */ }
 
         function cambiarVista(nombre) {
             if (sistemaEnMantenimiento && nombre !== 'admin' && nombre !== 'login') {
@@ -1900,6 +1889,7 @@ async function cargarSaldoReal(){
             window.lyvUserId = perfil?.lyv_user_id || window.lyvUserId || '';
             if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
             await cargarSaldoReal();
+            await cargarOrdenesReales();
 
             const h=document.getElementById('headerUserBtn'); if(h) h.innerText = usuarioActual.toUpperCase();
             const d=document.getElementById('drawerAuthBtn'); if(d) d.innerHTML = `<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
@@ -2488,31 +2478,58 @@ async function confirmarCompraVisual(){
 function generarIdOrdenUnico(){let id;do{id='ORD-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllOrders||[]).some(o=>o.id===id));return id;}
 window.comprarPaqueteReal=mostrarConfirmacionCompra;
 
-function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}${o.cantidad?` · Cantidad: ${o.cantidad}`:''}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(o.estado||'Pendiente')}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado definitivo será determinado por la API del proveedor cuando se conecte. Esta fase no inventa estados del proveedor.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
+function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}${o.cantidad?` · Cantidad: ${o.cantidad}`:''}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(o.estado||'Pendiente')}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado mostrado proviene del registro de la orden y del proveedor. No se marca como entregada hasta recibir confirmación real.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
 
 function renderizarHistorial(){const c=document.getElementById('listaHistorial');if(!c)return;const arr=historialOrdenes.filter(o=>o.tipo!=='recarga');if(!arr.length){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay pedidos registrados.</div>';return;}c.innerHTML=arr.map(o=>`<div class="order-item"><div class="order-header"><span>${escapeHtml(o.producto||o.nombre)}</span><span class="badge-status status-pending">${escapeHtml(o.estado)}</span></div><div style="font-size:.72rem;color:var(--text-muted)">Pedido: ${escapeHtml(o.id)} • ${escapeHtml(o.fecha)}</div><div style="font-size:.72rem;color:var(--text-muted)">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><button class="btn-action" style="padding:8px;margin-top:4px;background:rgba(255,255,255,.04);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="verPedido('${o.id}')">Ver pedido</button></div>`).join('');}
+
+async function cargarOrdenesReales(){
+    if(!usuarioActual) return;
+    try{
+      const {data,error}=await lyvSupabase
+        .from('lyv_store_orders')
+        .select('*')
+        .order('created_at',{ascending:false})
+        .limit(100);
+      if(error) throw error;
+      historialOrdenes=(data||[]).map(o=>({
+        id:o.local_order_id || (o.provider_order_id ? 'SIXO-'+o.provider_order_id : String(o.id)),
+        usuario:usuarioActual,
+        email:correoUsuario,
+        ffid:o.uid,
+        producto:o.product_name,
+        cantidad:Number(o.quantity||1),
+        precioUnitario:Number(o.unit_price_mxn||0),
+        precio:Number(o.total_mxn||0),
+        metodoPago:'saldo',
+        estado:o.status || 'CREATED',
+        estadoProveedor:o.provider_status || null,
+        providerOrderId:o.provider_order_id || null,
+        providerProductId:o.provider_product_id || null,
+        fecha:o.created_at ? new Date(o.created_at).toLocaleString() : '',
+        timestamp:o.created_at ? new Date(o.created_at).getTime() : Date.now(),
+        tipo:'compra'
+      }));
+      window.lyvAllOrders=historialOrdenes.slice();
+      actualizarPanelesUsuario();
+      renderizarHistorial();
+      renderAdminDashboard();
+    }catch(e){
+      console.warn('No se pudo cargar historial real:',e);
+    }
+}
 
 function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=historialOrdenes.filter(o=>o.tipo!=='recarga').length;}
 
 function ejecutarRecarga(){
     if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
-    const monto=Number(paqueteRecargaElegido);
-    if(!PAQUETES_RECARGA.includes(monto)){alert('Selecciona uno de los paquetes disponibles.');return;}
-    if(!METODOS_PAGO[metodoPagoElegido]||!estadoMetodosPago[metodoPagoElegido]){alert('Selecciona un método de pago disponible.');return;}
-    const totalMxn=obtenerTotalMxn(monto);
-    referenciaPagoActual = metodoPagoElegido==='binance' ? (referenciaPagoActual || generarCodigoNotaBinance()) : null;
-    lyvPendingRecharge={montoUsd:monto,montoMxn:totalMxn,monedaBase:'USD',metodo:metodoPagoElegido,referenciaBinance:referenciaPagoActual};
-    let detalle='';
-    if(metodoPagoElegido==='binance'){
-        detalle=`<div><b>Total:</b> ${monto.toFixed(2)} <span style="color:#ffd166">USDT</span></div><div><b>ID Binance destino:</b> ${BINANCE_DESTINO_ID}</div><div><b>Código de nota:</b> ${escapeHtml(referenciaPagoActual)}</div><div style="margin-top:9px;padding:9px;border-radius:10px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.25);font-size:.74rem;color:#ffe08a"><b>⚠️ Envía únicamente USDT.</b> Si no sabes usar Binance, abre el tutorial oficial.</div><a href="https://www.youtube.com/watch?v=OgC4_Gcppzg" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;margin-top:8px;color:#ff8a8a;font-weight:800;text-decoration:none">▶️ Ver tutorial de Binance Pay</a>`;
-    }else if(metodoPagoElegido==='mercadopago'){
-        detalle=`<div><b>Paquete:</b> ${monto.toFixed(2)} USD</div><div><b>Total Mercado Pago:</b> $${totalMxn.toFixed(2)} MXN</div>`;
-    }else{
-        detalle=`<div><b>Paquete:</b> ${monto.toFixed(2)} USD</div><div><b>Total OXXO:</b> $${totalMxn.toFixed(2)} MXN</div><div style="font-size:.75rem;margin-top:6px">OXXO es manual: paga, sube tu comprobante y espera la revisión del administrador.</div>`;
-    }
-    abrirModal(`<div class="card-title" style="color:var(--accent-blue)">💳 Confirmar recarga</div><div class="order-item">${detalle}<div style="font-size:.75rem;color:var(--text-muted);margin-top:8px">La recarga no se acredita por este botón. Mercado Pago/Binance se acreditarán solo con confirmación real del backend; OXXO quedará pendiente de tu aprobación manual.</div></div><div class="modal-actions"><button class="btn-action" onclick="confirmarRecargaVisual()">Generar solicitud</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
+    abrirModal(`<div style="text-align:center">
+      <div style="font-size:2.5rem">💳</div>
+      <h3 style="margin:8px 0">Recargas automáticas próximamente</h3>
+      <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;margin:10px 0">La tienda ya tiene billetera y compras reales conectadas. Binance, Mercado Pago y OXXO se habilitarán cuando sus confirmaciones de pago estén conectadas al backend.</p>
+      <a href="https://wa.me/524172702259?s=p" target="_blank" rel="noopener noreferrer" class="btn-action" style="display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);color:#25D366;box-shadow:none">🟢 Contactar por WhatsApp</a>
+      <button class="btn-action" style="margin-top:8px;background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button>
+    </div>`);
 }
-
 function renderizarHistorialRecargasSafe(){
     const c=document.getElementById('listaHistorialRecargas');
     if(!c)return;
@@ -2767,7 +2784,9 @@ async function validarId(){
 }
 
 // Redibuja extras al cargar sin alterar el diseño existente.
-window.addEventListener('load',()=>{cargarReportesPagoVisual();productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
+window.addEventListener('load',()=>{cargarReportesPagoVisual();
+  const payBox=document.getElementById('selectorMetodosPagoContainer'); if(payBox) payBox.innerHTML='<div style="padding:12px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.03);font-size:.76rem;color:var(--text-muted);text-align:center">💳 Recargas automáticas: próximamente. La compra con saldo ya funciona con billetera real.</div>';
+  const reportCard=document.getElementById('reportComprobante')?.closest('.card'); if(reportCard) reportCard.style.display='none';productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
 async function renderAdminUsuarios(filtro=''){
     const c=document.getElementById('adminUsuariosList'); if(!c)return;
     c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Cargando usuarios reales desde Supabase...</div>';
