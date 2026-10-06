@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1710,7 +1710,7 @@
 
         async function iniciarSesionSocial(proveedor) {
             try {
-                const {error}=await lyvSupabase.auth.signInWithOAuth({provider: proveedor, options:{redirectTo:'https://lyvstoremxfinallista.vercel.app/'}});
+                const {error}=await lyvSupabase.auth.signInWithOAuth({provider,options:{redirectTo:'https://lyvstoremxfinallista.vercel.app/'}});
                 if(error) throw error;
             } catch(e) { alert('Este acceso social todavía no está habilitado en Supabase: '+(e?.message||'revisa el proveedor.')); }
         }
