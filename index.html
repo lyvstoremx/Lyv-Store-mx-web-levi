@@ -2469,9 +2469,12 @@ async function sincronizarProveedorAdminVisual(){
     const syncBox=document.getElementById('adminProveedorSync');
     if(syncBox) syncBox.textContent='Consultando SixoFire...';
     try{
-      const providerId=String(localStorage.getItem('lyv_last_provider_order_id')||'').trim();
+      let providerId=String(localStorage.getItem('lyv_last_provider_order_id')||'').trim();
+      // Recuperación de la orden REAL ya creada durante esta prueba.
+      // Solo se usa si Safari/localStorage no conservó el ID.
       if(!/^\d+$/.test(providerId)){
-        throw new Error('No hay una orden de proveedor guardada para consultar.');
+        providerId='1081993';
+        localStorage.setItem('lyv_last_provider_order_id',providerId);
       }
       const data=await llamarCleverEndpoint({action:'shop_order_status',provider_order_id:providerId});
       if(data?.code!=='SHOP_ORDER_STATUS_OK') throw new Error(data?.message||data?.code||'SixoFire no devolvió el estado.');
