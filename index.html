@@ -560,7 +560,7 @@
             </div>
             <div class="logo" id="headerLogoText">Lyv Store <span>Mx</span></div>
         </div>
-        <div class="user-pill" id="headerUserBtn" onclick="cambiarVista('login')">Ingresar</div>
+        <div class="user-pill" id="headerUserBtn" onclick="manejoBotonHeaderUsuario()">Ingresar</div>
     </header>
 
     <!-- Menú Lateral -->
@@ -1689,6 +1689,15 @@
         }
 
         
+
+
+        function manejoBotonHeaderUsuario(){
+            if(usuarioActual){
+                cambiarVista('perfil');
+            }else{
+                cambiarVista('login');
+            }
+        }
 
         async function iniciarSesionTradicional() {
             const u = document.getElementById('loginUser').value.trim().toLowerCase();
