@@ -959,7 +959,7 @@
                     <div class="admin-row"><span>Mercado Pago</span><span style="color:#6ee7a0">Preparado para backend/webhook</span></div>
                     <div class="admin-row"><span>Binance</span><span style="color:#6ee7a0">Preparado para confirmación real</span></div>
                     <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">SixoFire conectado por backend</span></div>
-                    <div class="admin-row"><span>Comprobantes OXXO</span><span style="color:#6ee7a0">Revisión manual activada</span></div>
+                    <div class="admin-row"><span>Comprobantes OXXO</span><span style="color:#ffc107">Revisión manual</span></div>
                 </div>
             </div>
 
@@ -1076,7 +1076,8 @@
                     <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
-<div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
+                    <button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">🧪 Crear orden real de $0.03 USD</button>
+                    <div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
                 </div>
                 <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La consulta de catálogo usa SixoFire desde el backend. La orden de prueba solo se envía cuando confirmas el botón amarillo.</div>
             </div>
@@ -2324,9 +2325,23 @@ async function mostrarConfirmacionCompra(){
 }
 async function resolverProductoProviderId(producto){
     const explicit=producto?.sixofire_product_id ?? producto?.product_id ?? producto?.provider_product_id;
-    // El backend es la fuente de verdad y puede resolver automáticamente el product_id
-    // contra el catálogo real de SixoFire cuando la tabla local todavía no tiene mapping.
-    return explicit ? String(explicit) : null;
+    if(explicit && /^\d{4,6}$/.test(String(explicit))) return String(explicit);
+
+    // Si el producto local aún no trae el ID de SixoFire, intentamos resolverlo
+    // contra el catálogo real. El backend sigue siendo la autoridad final y
+    // rechazará cualquier producto que no esté configurado en lyv_store_products.
+    try{
+      const data=await llamarCleverEndpoint({action:'catalog'});
+      const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
+      const target=String(producto?.nombre||'').trim().toLowerCase();
+      const normalize=v=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
+      const item=items.find(x=>normalize(x?.name)===normalize(target)) ||
+        items.find(x=>normalize(x?.product_name)===normalize(target));
+      const id=item?.id ?? item?.product_id ?? item?.productId ?? item?.sku;
+      return /^\d{4,6}$/.test(String(id??'')) ? String(id) : null;
+    }catch(_){
+      return null;
+    }
 }
 
 async function confirmarCompraVisual(){
@@ -2503,8 +2518,8 @@ function ejecutarRecarga(){
     if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
     abrirModal(`<div style="text-align:center">
       <div style="font-size:2.5rem">💳</div>
-      <h3 style="margin:8px 0">Recargas automáticas próximamente</h3>
-      <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;margin:10px 0">La tienda ya tiene billetera y compras reales conectadas. Binance, Mercado Pago y OXXO se habilitarán cuando sus confirmaciones de pago estén conectadas al backend.</p>
+      <h3 style="margin:8px 0">Recarga de saldo</h3>
+      <p style="font-size:.8rem;color:var(--text-muted);line-height:1.5;margin:10px 0">La billetera y las compras con saldo ya están conectadas al backend. La acreditación automática de Binance y Mercado Pago requiere sus credenciales y webhooks en el backend; no se simulará ningún pago desde el navegador.</p>
       <a href="https://wa.me/524172702259?s=p" target="_blank" rel="noopener noreferrer" class="btn-action" style="display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);color:#25D366;box-shadow:none">🟢 Contactar por WhatsApp</a>
       <button class="btn-action" style="margin-top:8px;background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button>
     </div>`);
@@ -2758,9 +2773,23 @@ async function validarId(){
 }
 
 // Redibuja extras al cargar sin alterar el diseño existente.
-window.addEventListener('load',()=>{cargarReportesPagoVisual();
-  const payBox=document.getElementById('selectorMetodosPagoContainer'); if(payBox) payBox.innerHTML='<div style="padding:12px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.03);font-size:.76rem;color:var(--text-muted);text-align:center">💳 Recargas automáticas: próximamente. La compra con saldo ya funciona con billetera real.</div>';
-  const reportCard=document.getElementById('reportComprobante')?.closest('.card'); if(reportCard) reportCard.style.display='none';productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
+window.addEventListener('load',()=>{
+  cargarReportesPagoVisual();
+  productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});
+  renderizarTienda();
+  renderizarAdminProductos();
+  renderAdminDashboard();
+  renderAdminLogs();
+  renderAdminPaymentReports();
+  actualizarFormularioReportePago();
+  renderizarPaquetesRecarga();
+  const payBox=document.getElementById('selectorMetodosPagoContainer');
+  if(payBox) payBox.innerHTML=generarOpcionesPagoHTML();
+  renderizarDetalleMetodoPago();
+  renderizarHistorialRecargasSafe();
+  const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;
+  const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;
+});
 async function renderAdminUsuarios(filtro=''){
     const c=document.getElementById('adminUsuariosList'); if(!c)return;
     c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Cargando usuarios reales desde Supabase...</div>';
@@ -2840,6 +2869,36 @@ async function probarConexionClever(resultadoId='cleverTestResultado'){
   }catch(e){
     const msg=String(e?.message||e||'');
     if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+  }
+}
+
+async function probarOrdenRealSixoFire(){
+  const btn=document.getElementById('btnPruebaOrdenSixoFire');
+  const box=document.getElementById('adminPruebaOrdenResultado');
+  const uid='14608057611';
+  const productId='17729';
+  const confirmado=window.confirm('Esta acción CREARÁ UNA ORDEN REAL en SixoFire por $0.03 USD para el UID '+uid+'.\n\n¿Quieres continuar?');
+  if(!confirmado) return;
+  if(btn){btn.disabled=true;btn.innerText='Creando orden real...';}
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Enviando una sola orden real a SixoFire...</span>';
+  try{
+    const data=await llamarCleverEndpoint({action:'shop_order',uid,product_id:productId,store_product_id:8,quantity:1,local_order_id:'ADMIN-TEST-'+Date.now()});
+    if(!data?.ok || data?.code!=='SHOP_ORDER_CREATED_AND_CHARGED'){
+      throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
+    }
+    const providerId=data?.provider_order_id ?? 'No informado';
+    const status=data?.status ?? 'No informado';
+    localStorage.setItem('lyv_last_provider_order_id',String(providerId));
+    localStorage.setItem('lyv_provider_status',String(status));
+    localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ ORDEN REAL CREADA.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(String(providerId))+'</b> · Estado: <b>'+escapeHtml(String(status))+'</b></span>';
+    renderAdminProveedor();
+    lyvLog('SIXOFIRE SHOP_ORDER','Orden real creada · UID '+uid+' · producto '+productId+' · provider_order_id '+providerId);
+    if(btn){btn.innerText='Orden creada ✓';btn.disabled=true;}
+  }catch(e){
+    const msg=String(e?.message||e||'Error desconocido');
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+    if(btn){btn.disabled=false;btn.innerText='Reintentar orden real';}
   }
 }
 
