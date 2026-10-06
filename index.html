@@ -930,12 +930,12 @@
                 <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;">Úsalo si un usuario tuvo un error, pago duplicado o necesitas compensarlo. La operación queda registrada con un ID de ajuste.</p>
                 <div style="display:flex;flex-direction:column;gap:9px;">
                     <input id="adminCreditoUsuarioId" type="text" placeholder="ID del usuario (ej. USR-123456)">
-                    <input id="adminCreditoMonto" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Monto a acreditar en MXN">
+                    <input id="adminCreditoMonto" type="text" inputmode="decimal" autocomplete="off" placeholder="Monto a acreditar en MXN">
                     <input id="adminCreditoMotivo" type="text" maxlength="120" placeholder="Motivo (ej. Pago no acreditado / compensación)">
                     <button class="btn-action" onclick="acreditarCreditoAdminVisual()">Acreditar crédito</button>
                 </div>
                 <div id="adminCreditoResultado" style="margin-top:10px;"></div>
-                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">🔒 En producción, esta acción debe ejecutarse en el backend con autorización de administrador, transacción de base de datos, registro de auditoría e idempotencia. Esta versión es únicamente visual/preparación.</div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">🔒 Esta acción se procesa mediante el backend seguro de Supabase, con autorización de administrador y registro de la operación.</div>
             </div>
 
             <!-- HISTORIAL DE AJUSTES -->
@@ -2535,29 +2535,64 @@ async function acreditarCreditoAdminVisual(){
     const montoEl=document.getElementById('adminCreditoMonto');
     const motivoEl=document.getElementById('adminCreditoMotivo');
     const target=String(uidEl?.value??'').trim();
-    const raw=String(montoEl?.value??'').trim().replace(',','.');
-    const amount=Number.parseFloat(raw);
+
+    let raw=String(montoEl?.value??'').trim();
+    raw=raw.replace(/[^\d.,-]/g,'');
+    if(raw.includes(',') && raw.includes('.')) raw=raw.replace(/,/g,'');
+    else raw=raw.replace(',','.');
+
+    const amount=Number(raw);
     const reason=String(motivoEl?.value??'').trim();
+
     if(!target){alert('Ingresa el correo, username, UUID o ID de Free Fire del usuario.');return;}
     if(!raw || !Number.isFinite(amount) || amount<=0){alert('Ingresa un monto válido mayor a 0. Ejemplo: 10');return;}
     if(!reason){alert('Indica el motivo del ajuste.');return;}
     if(!confirm(`¿Acreditar $${amount.toFixed(2)} MXN?\n\nUsuario: ${target}\nMotivo: ${reason}`))return;
+
     try{
-      const data=await llamarCleverEndpoint({action:'admin_credit',target,amount:Number(amount.toFixed(2)),reason});
+      const data=await llamarCleverEndpoint({
+        action:'admin_credit',
+        target,
+        amount:Number(amount.toFixed(2)),
+        reason
+      });
+
       if(!data?.ok) throw new Error(data?.message||data?.code||'No se pudo acreditar.');
+
       window.lyvManualCredits=window.lyvManualCredits||[];
       window.lyvManualCredits.unshift({
-        ajusteId:data.reference||'AJU-'+Date.now(),usuarioId:target,monto:Number(data.amount_mxn||amount),moneda:'MXN',motivo:reason,admin:correoUsuario||'admin',fecha:new Date().toLocaleString(),modo:'REAL'
+        ajusteId:data.reference||'AJU-'+Date.now(),
+        usuarioId:target,
+        monto:Number(data.amount_mxn||amount),
+        moneda:'MXN',
+        motivo:reason,
+        admin:correoUsuario||'admin',
+        fecha:new Date().toLocaleString(),
+        modo:'REAL'
       });
-      persistirCreditosManualesVisual(); renderAdminCreditosManuales();
-      if(String(target).toLowerCase()===String(correoUsuario).toLowerCase() || String(target)===String(usuarioActual)) saldoActual=Number(data.balance_mxn||saldoActual);
+
+      persistirCreditosManualesVisual();
+      renderAdminCreditosManuales();
+
+      if(String(target).toLowerCase()===String(correoUsuario).toLowerCase() || String(target)===String(usuarioActual)){
+        saldoActual=Number(data.balance_mxn||saldoActual);
+      }
+
       actualizarPanelesUsuario();
+
       const out=document.getElementById('adminCreditoResultado');
-      if(out)out.innerHTML=`<div style="padding:10px;border-radius:10px;border:1px solid rgba(110,231,160,.3);background:rgba(110,231,160,.07);font-size:.74rem;color:#6ee7a0">✓ Crédito real aplicado: <b>+$${Number(data.amount_mxn||amount).toFixed(2)} MXN</b><br>ID de ajuste: <b>${escapeHtml(data.reference||'-')}</b><br>Saldo del usuario: <b>$${Number(data.balance_mxn||0).toFixed(2)} MXN</b></div>`;
+      if(out) out.innerHTML=`<div style="padding:10px;border-radius:10px;border:1px solid rgba(110,231,160,.3);background:rgba(110,231,160,.07);font-size:.74rem;color:#6ee7a0">✓ Crédito real aplicado: <b>+$${Number(data.amount_mxn||amount).toFixed(2)} MXN</b><br>ID de ajuste: <b>${escapeHtml(data.reference||'-')}</b><br>Saldo del usuario: <b>$${Number(data.balance_mxn||0).toFixed(2)} MXN</b></div>`;
+
       lyvLog('CRÉDITO REAL',`${data.reference||'-'}: +$${Number(data.amount_mxn||amount).toFixed(2)} MXN a ${target}`);
-      if(uidEl)uidEl.value=''; if(montoEl)montoEl.value=''; if(motivoEl)motivoEl.value='';
+
+      if(uidEl)uidEl.value='';
+      if(montoEl)montoEl.value='';
+      if(motivoEl)motivoEl.value='';
+
       alert(`Crédito aplicado correctamente. Nuevo saldo: $${Number(data.balance_mxn||0).toFixed(2)} MXN`);
-    }catch(e){alert('No se pudo acreditar el saldo: '+String(e?.message||e||'Error'));}
+    }catch(e){
+      alert('No se pudo acreditar el saldo: '+String(e?.message||e||'Error'));
+    }
 }
 
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
