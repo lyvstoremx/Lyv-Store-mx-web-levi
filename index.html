@@ -941,6 +941,14 @@
                 </div>
             </div>
 
+            <!-- PRUEBA TEMPORAL DE CONEXIÓN CON EDGE FUNCTION -->
+            <div class="card" id="cleverTestCard">
+                <div class="card-title" style="color:var(--accent-blue);">🔐 Prueba de conexión segura</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Esta prueba solo verifica que tu sesión puede llegar al backend. No crea compras, no descuenta saldo y no llama a SixoFire.</p>
+                <button class="btn-action" type="button" onclick="probarConexionClever()">Probar conexión</button>
+                <div id="cleverTestResultado" style="margin-top:10px;font-size:.75rem;"></div>
+            </div>
+
             <!-- ACTIVIDAD DEL ADMIN -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">📝 Actividad reciente</div>
@@ -2343,6 +2351,25 @@ function renderAdminProveedor(){
 }
 function marcarPruebaProveedorAdmin(){localStorage.setItem('lyv_provider_status','Prueba local');localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Prueba local registrada; no se llamó a una API real.');alert('Prueba local registrada. La conexión real se hará desde el backend.');}
 function sincronizarProveedorAdminVisual(){localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Sincronización visual solicitada.');alert('Sincronización preparada. La consulta real del proveedor requiere backend.');}
+
+async function probarConexionClever(){
+  const box=document.getElementById('cleverTestResultado');
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Probando sesión y conexión...</span>';
+  try{
+    const testOrderId=(crypto.randomUUID?crypto.randomUUID():('00000000-0000-4000-8000-'+Date.now().toString().padStart(12,'0')));
+    const testKey='test-clever-'+(crypto.randomUUID?crypto.randomUUID():Date.now());
+    await llamarCleverEndpoint({order_id:testOrderId,idempotency_key:testKey});
+    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ El backend respondió correctamente.</span>';
+  }catch(e){
+    const msg=String(e?.message||e||'');
+    if(msg.includes('ORDER_NOT_FOUND') || msg.includes('Orden no encontrada') || msg.includes('404')){
+      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Conexión y autenticación correctas. El backend rechazó la orden de prueba porque no existe, como esperábamos.</span>';
+      return;
+    }
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+  }
+}
+
 function renderAdminCompleto(){
     try{renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');renderAdminIncidencias();renderAdminProveedor();renderAdminOtrosProductos();cargarConfiguracionAdmin();}catch(e){console.warn('Admin completo:',e);}
 }
