@@ -2276,11 +2276,7 @@ async function renderAdminUsuarios(filtro=''){
     const c=document.getElementById('adminUsuariosList'); if(!c)return;
     c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Cargando usuarios reales desde Supabase...</div>';
     try{
-        const {data:perfilAdmin,error:errAdmin}=await lyvSupabase.from('profiles').select('role').eq('id',(await lyvSupabase.auth.getUser()).data.user?.id||'').maybeSingle();
-        if(errAdmin) throw errAdmin;
-        if(perfilAdmin?.role!=='admin') throw new Error('Tu cuenta no tiene permisos de administrador.');
-        let q=lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').order('created_at',{ascending:false});
-        const {data,error}=await q;
+        const {data,error}=await lyvSupabase.rpc('get_admin_profiles');
         if(error) throw error;
         const term=String(filtro||'').toLowerCase().trim();
         const arr=(data||[]).filter(u=>!term||[u.email,u.username,u.display_name,u.free_fire_id,u.free_fire_name].filter(Boolean).join(' ').toLowerCase().includes(term));
@@ -2295,7 +2291,7 @@ async function alternarBloqueoUsuarioAdmin(id,bloquear){
     if(id===(await lyvSupabase.auth.getUser()).data.user?.id){alert('La cuenta principal de administrador no puede bloquearse desde este panel.');return;}
     if(!confirm(`¿Confirmas ${bloquear?'bloquear':'desbloquear'} este usuario?`))return;
     try{
-      const {error}=await lyvSupabase.from('profiles').update({is_blocked:!!bloquear}).eq('id',id);
+      const {error}=await lyvSupabase.rpc('set_user_blocked',{p_user_id:id,p_blocked:!!bloquear});
       if(error) throw error;
       lyvLog('USUARIO',`${id}: ${bloquear?'bloqueado':'desbloqueado'}`);
       renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');
