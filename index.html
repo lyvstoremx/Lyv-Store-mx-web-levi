@@ -2347,7 +2347,7 @@ async function validarId(){
     const inputId = String(input?.value || '').trim();
     const region = String(regionEl?.value || 'US').trim().toUpperCase();
 
-    if(!/^\\d{8,12}$/.test(inputId)){
+    if(!/^\d{8,12}$/.test(inputId)){
         if(msg) msg.innerHTML = '<span style="color:#ff8b8b">✗ El ID debe tener entre 8 y 12 dígitos.</span>';
         input?.focus();
         return;
