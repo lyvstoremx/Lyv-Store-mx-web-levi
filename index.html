@@ -1680,7 +1680,7 @@
             { id: 5, nombre: '2398 Diamantes', mxn: 300.00, usd: 17.65, icon: '💎' },
             { id: 6, nombre: '6160 Diamantes', mxn: 670.00, usd: 39.40, icon: '💎' },
             { id: 7, nombre: 'Pase Booyah', mxn: 45.00, usd: 2.65, icon: '🎟' },
-            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩' },
+            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩', providerId: '17729' },
             { id: 9, nombre: 'Caja de Fragmentos', mxn: 3.5, usd: 0.19, icon: '📦' }
         ];
 
@@ -2234,27 +2234,111 @@ function mostrarConfirmacionCompra(){
       <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">La cantidad se guarda en el pedido. El backend deberá validar posteriormente los límites de apilado del producto en SixoFire.</div>
       <div class="modal-actions"><button class="btn-action" onclick="confirmarCompraVisual()">Confirmar compra</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
-function confirmarCompraVisual(){
-    if(!lyvPendingPurchase){
-        const input=document.getElementById('lyvCantidadCompra');
-        const cantidad=Math.max(1,Math.min(99,Number(input?.value)||1));
-        const precio=Number(productoElegido?.precio ?? productoElegido?.mxn ?? 0);
-        lyvPendingPurchase={producto:{...productoElegido},idFreeFire,precio,cantidad,total:precio*cantidad};
-    }
+async function confirmarCompraVisual(){
+    if(!usuarioActual){alert('Inicia sesión para realizar tu compra.');cambiarVista('login');return;}
+    if(!idFreeFire){alert('Ingresa y confirma tu ID de Free Fire en la parte superior de la tienda.');return;}
+    if(!productoElegido){alert('Selecciona un paquete del catálogo.');return;}
+
     const input=document.getElementById('lyvCantidadCompra');
-    const cantidad=Math.max(1,Math.min(99,Number(input?.value)||lyvPendingPurchase.cantidad||1));
-    const p={...lyvPendingPurchase,cantidad,total:Number(lyvPendingPurchase.precio||0)*cantidad};
-    const idOrden=generarIdOrdenUnico();
-    if(saldoActual<p.total){alert('Saldo insuficiente para esa cantidad.');cambiarVista('billetera');return;}
-    // Visual only: no provider/API call yet. Backend must validate quantity and create the provider order idempotently.
-    saldoActual-=p.total; gastoTotal+=p.total; totalOrdenesCount++;
-    const orden={id:idOrden,usuario:usuarioActual,email:correoUsuario,ffid:p.idFreeFire,producto:p.producto.nombre,cantidad:p.cantidad,precioUnitario:p.precio,precio:p.total,metodoPago:'saldo',estado:'CONFIRMADA · PENDIENTE DE ENTREGA',estadoProveedor:null,fecha:new Date().toLocaleString(),timestamp:Date.now(),tipo:'compra'};
-    historialOrdenes.unshift(orden);
-    window.lyvAllOrders=window.lyvAllOrders||[]; window.lyvAllOrders.unshift(orden);
-    lyvLog('COMPRA',`${idOrden} creada para ${p.producto.nombre} / FF ${p.idFreeFire}`);
-    actualizarPanelesUsuario(); renderizarHistorial(); renderAdminDashboard();
-    lyvPendingPurchase=null;
-    abrirModal(`<div style="text-align:center"><div style="font-size:2.8rem">✅</div><h3 style="margin:8px 0">¡Compra confirmada!</h3><p style="font-size:.8rem;color:var(--text-muted)">Tu pedido fue registrado correctamente.</p><div class="order-item" style="text-align:left;margin-top:12px"><b>Pedido:</b> ${idOrden}<br><b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br><b>Cantidad:</b> ${p.cantidad}<br><b>Total:</b> $${Number(p.total).toFixed(2)} MXN<br><b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br><b>Estado:</b> <span style="color:#ffc107">Confirmada · Pendiente de entrega</span></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button></div></div>`);
+    const cantidad=Math.max(1,Math.min(99,Number(input?.value)||1));
+    const precio=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
+    const total=precio*cantidad;
+
+    if(saldoActual < total){
+        alert('Saldo insuficiente para esa cantidad.');
+        cerrarModal();
+        cambiarVista('billetera');
+        return;
+    }
+
+    const btn=document.querySelector('#lyvModalBox .modal-actions .btn-action');
+    if(btn){btn.disabled=true;btn.textContent='Procesando pedido...';}
+    const aviso=document.getElementById('lyvAvisoCantidadCompra');
+    if(aviso){aviso.innerHTML='<span style="color:#ffc107">⏳ Enviando la orden real a SixoFire. No cierres esta ventana.</span>';}
+
+    try{
+        // El ID del proveedor puede venir configurado en el producto.
+        // Si no existe, consultamos el catálogo real y buscamos una coincidencia por nombre.
+        let providerProductId=productoElegido.providerId || productoElegido.sixofireProductId || null;
+
+        if(!providerProductId){
+            const cat=await llamarCleverEndpoint({action:'catalog'});
+            if(cat?.code!=='CATALOG_OK') throw new Error(cat?.message||cat?.code||'No se pudo consultar el catálogo de SixoFire.');
+            const items=Array.isArray(cat?.catalog?.items)?cat.catalog.items:[];
+            const objetivo=String(productoElegido.nombre||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+            const tokens=objetivo.split(/\s+/).filter(Boolean);
+            const encontrado=items.find(x=>{
+                if(x?.available===false || x?.isActive===false) return false;
+                const nombre=String(x?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+                return nombre===objetivo || (tokens.length>=2 && tokens.every(t=>nombre.includes(t)));
+            });
+            providerProductId=encontrado?.id ?? null;
+        }
+
+        if(!providerProductId){
+            throw new Error('No se encontró el producto seleccionado en el catálogo de SixoFire.');
+        }
+
+        // IMPORTANTE: la cantidad viaja al backend; el backend debe enviarla a SixoFire.
+        const data=await llamarCleverEndpoint({
+            action:'shop_order',
+            uid:String(idFreeFire),
+            product_id:String(providerProductId),
+            quantity:cantidad
+        });
+
+        if(data?.code!=='SHOP_ORDER_CREATED'){
+            throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
+        }
+
+        const providerId=data?.provider_order_id ?? data?.order_id ?? null;
+        const providerStatus=String(data?.status||'PENDING');
+        const idOrden=generarIdOrdenUnico();
+
+        // El saldo SOLO se descuenta después de que SixoFire confirma la orden.
+        saldoActual-=total;
+        gastoTotal+=total;
+        totalOrdenesCount++;
+
+        const orden={
+            id:idOrden,
+            usuario:usuarioActual,
+            email:correoUsuario,
+            ffid:String(idFreeFire),
+            producto:productoElegido.nombre,
+            cantidad,
+            precioUnitario:precio,
+            precio:total,
+            metodoPago:'saldo',
+            estado:'CONFIRMADA · PENDIENTE DE ENTREGA',
+            estadoProveedor:providerStatus,
+            providerOrderId:providerId,
+            providerProductId:String(providerProductId),
+            fecha:new Date().toLocaleString(),
+            timestamp:Date.now(),
+            tipo:'compra'
+        };
+
+        historialOrdenes.unshift(orden);
+        window.lyvAllOrders=window.lyvAllOrders||[];
+        window.lyvAllOrders.unshift(orden);
+        localStorage.setItem('lyv_last_provider_order_id',String(providerId||''));
+        localStorage.setItem('lyv_provider_status',providerStatus);
+        localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+
+        lyvLog('SIXOFIRE SHOP_ORDER',`${idOrden} creada · proveedor ${providerId||'sin ID'} · UID ${idFreeFire} · producto ${providerProductId} · cantidad ${cantidad}`);
+        actualizarPanelesUsuario();
+        renderizarHistorial();
+        renderAdminDashboard();
+        lyvPendingPurchase=null;
+
+        abrirModal(`<div style="text-align:center"><div style="font-size:2.8rem">✅</div><h3 style="margin:8px 0">¡Compra confirmada!</h3><p style="font-size:.8rem;color:var(--text-muted)">La orden real fue aceptada por SixoFire.</p><div class="order-item" style="text-align:left;margin-top:12px"><b>Pedido:</b> ${idOrden}<br><b>Producto:</b> ${escapeHtml(productoElegido.nombre)}<br><b>Cantidad:</b> ${cantidad}<br><b>Total:</b> $${total.toFixed(2)} MXN<br><b>ID Free Fire:</b> ${escapeHtml(idFreeFire)}<br><b>ID proveedor:</b> ${escapeHtml(String(providerId||'No informado'))}<br><b>Estado:</b> <span style="color:#ffc107">${escapeHtml(providerStatus)}</span></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button></div></div>`);
+    }catch(e){
+        console.error('SHOP_ORDER:',e);
+        if(btn){btn.disabled=false;btn.textContent='Confirmar compra';}
+        if(aviso) aviso.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(String(e?.message||e||'No se pudo crear la orden.'))+'</span>';
+        alert(String(e?.message||e||'No se pudo crear la orden real.'));
+    }
 }
 function generarIdOrdenUnico(){let id;do{id='ORD-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllOrders||[]).some(o=>o.id===id));return id;}
 window.comprarPaqueteReal=mostrarConfirmacionCompra;
