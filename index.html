@@ -1044,10 +1044,11 @@
                 <div class="admin-row"><span>Última sincronización</span><span id="adminProveedorSync">Nunca</span></div>
                 <div class="admin-row"><span>Órdenes pendientes</span><span id="adminProveedorPendientes">0</span></div>
                 <div style="display:flex;gap:8px;margin-top:10px;">
-                    <button class="btn-action" onclick="marcarPruebaProveedorAdmin()">Probar conexión</button>
+                    <button class="btn-action" type="button" onclick="probarConexionClever('adminProveedorPruebaResultado')">Probar conexión real</button>
                     <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="sincronizarProveedorAdminVisual()">Sincronizar estados</button>
                 </div>
-                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La prueba actual solo registra el estado visual. La llamada real debe usar el endpoint oficial y la clave exclusivamente desde el backend.</div>
+                <div id="adminProveedorPruebaResultado" style="font-size:.72rem;margin-top:9px;"></div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">Esta prueba usa la sesión de Supabase para llamar al backend. No crea compras, no descuenta saldo y no envía una orden a SixoFire.</div>
             </div>
 
             <!-- CENTRO DE INCIDENCIAS -->
@@ -2352,8 +2353,8 @@ function renderAdminProveedor(){
 function marcarPruebaProveedorAdmin(){localStorage.setItem('lyv_provider_status','Prueba local');localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Prueba local registrada; no se llamó a una API real.');alert('Prueba local registrada. La conexión real se hará desde el backend.');}
 function sincronizarProveedorAdminVisual(){localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Sincronización visual solicitada.');alert('Sincronización preparada. La consulta real del proveedor requiere backend.');}
 
-async function probarConexionClever(){
-  const box=document.getElementById('cleverTestResultado');
+async function probarConexionClever(resultadoId='cleverTestResultado'){
+  const box=document.getElementById(resultadoId)||document.getElementById('cleverTestResultado');
   if(box) box.innerHTML='<span style="color:#ffc107">⏳ Probando sesión y conexión...</span>';
   try{
     const testOrderId=(crypto.randomUUID?crypto.randomUUID():('00000000-0000-4000-8000-'+Date.now().toString().padStart(12,'0')));
