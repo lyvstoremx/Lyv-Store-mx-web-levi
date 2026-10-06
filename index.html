@@ -1660,10 +1660,14 @@
 
         let sistemaEnMantenimiento = false;
         let saldoActual = 0.00;
+function cargarSaldoPruebaLocal(){try{const k='lyv_saldo_prueba_'+String(correoUsuario||usuarioActual||'');const v=Number(localStorage.getItem(k));if(Number.isFinite(v))saldoActual=v;}catch(e){}}
+
         let gastoTotal = 0.00;
         let totalOrdenesCount = 0;
         let productoElegido = null;
         let cantidadProductoElegido = 1;
+        let limitesProductoSixoFire = {isStackable:true,minStack:1,maxStack:99};
+        let catalogoSixoFireCache = null;
         let usuarioActual = null;
         let correoUsuario = "";
         let idFreeFire = "";
@@ -1680,7 +1684,7 @@
             { id: 5, nombre: '2398 Diamantes', mxn: 300.00, usd: 17.65, icon: '💎' },
             { id: 6, nombre: '6160 Diamantes', mxn: 670.00, usd: 39.40, icon: '💎' },
             { id: 7, nombre: 'Pase Booyah', mxn: 45.00, usd: 2.65, icon: '🎟' },
-            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩', providerId: '17729' },
+            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩' },
             { id: 9, nombre: 'Caja de Fragmentos', mxn: 3.5, usd: 0.19, icon: '📦' }
         ];
 
@@ -1826,6 +1830,7 @@
             usuarioActual = perfil?.username || baseAuth;
             perfilNombreActual = perfil?.display_name || perfilNombreActual || usuarioActual;
             if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
+            cargarSaldoPruebaLocal();
 
             const h=document.getElementById('headerUserBtn'); if(h) h.innerText = usuarioActual.toUpperCase();
             const d=document.getElementById('drawerAuthBtn'); if(d) d.innerHTML = `<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
@@ -2190,18 +2195,24 @@ function mostrarRecuperacion(){
 }
 async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
+function obtenerLimiteCantidadProducto(){
+    const min=Math.max(1,Number(limitesProductoSixoFire?.minStack)||1);
+    const max=Math.max(min,Math.min(99,Number(limitesProductoSixoFire?.maxStack)||99));
+    return {min,max,stackable:limitesProductoSixoFire?.isStackable!==false};
+}
 function actualizarCantidadCompra(delta){
     const input=document.getElementById('lyvCantidadCompra');
-    if(!input || !productoElegido)return;
-    const actual=Math.max(1,Math.min(99,Number(input.value)||1));
-    const siguiente=Math.max(1,Math.min(99,actual+Number(delta||0)));
-    input.value=String(siguiente);
+    if(!input)return;
+    const lim=obtenerLimiteCantidadProducto();
+    const actual=Number(input.value)||lim.min;
+    input.value=String(Math.max(lim.min,Math.min(lim.max,actual+Number(delta||0))));
     actualizarResumenCantidadCompra();
 }
 function actualizarResumenCantidadCompra(){
     const input=document.getElementById('lyvCantidadCompra');
     if(!input || !productoElegido)return;
-    const cantidad=Math.max(1,Math.min(99,Number(input.value)||1));
+    const lim=obtenerLimiteCantidadProducto();
+    const cantidad=Math.max(lim.min,Math.min(lim.max,Number(input.value)||lim.min));
     input.value=String(cantidad);
     const unit=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
     const total=unit*cantidad;
@@ -2210,13 +2221,32 @@ function actualizarResumenCantidadCompra(){
     if(totalEl) totalEl.textContent='$'+total.toFixed(2)+' MXN';
     if(saldoEl) saldoEl.textContent='Saldo después de la compra: $'+(saldoActual-total).toFixed(2)+' MXN';
 }
-function mostrarConfirmacionCompra(){
+async function prepararLimitesCantidadProducto(){
+    limitesProductoSixoFire={isStackable:true,minStack:1,maxStack:99};
+    try{
+      const data=await llamarCleverEndpoint({action:'catalog'});
+      const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
+      const nombre=String(productoElegido?.nombre||'').trim().toLowerCase();
+      const item=items.find(x=>String(x?.name||'').trim().toLowerCase()===nombre);
+      if(item){
+        limitesProductoSixoFire={
+          isStackable:item.isStackable!==false,
+          minStack:Number(item.minStack)||1,
+          maxStack:Number(item.maxStack)||99
+        };
+      }
+    }catch(_){}
+}
+async function mostrarConfirmacionCompra(){
     if(!usuarioActual){alert('Inicia sesión para realizar tu compra.');cambiarVista('login');return;}
     if(!idFreeFire){alert('Ingresa y confirma tu ID de Free Fire en la parte superior de la tienda.');return;}
     if(!productoElegido){alert('Selecciona un paquete del catálogo.');return;}
     cantidadProductoElegido=1;
+    await prepararLimitesCantidadProducto();
+    const lim=obtenerLimiteCantidadProducto();
     const precio=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
     const total=precio*cantidadProductoElegido;
+    const cantidadNota=lim.stackable?('Permitido por SixoFire: '+lim.min+'–'+lim.max+' unidades.'):('Este producto no es apilable; solo se permite 1 unidad.');
     abrirModal(`<div class="card-title" style="color:var(--accent-blue)">🛒 Confirmar compra</div>
       <div class="order-item">
         <div><strong>${escapeHtml(productoElegido.nombre)}</strong></div>
@@ -2224,96 +2254,113 @@ function mostrarConfirmacionCompra(){
         <div style="font-size:.72rem;color:var(--text-muted);margin-top:9px">Cantidad</div>
         <div style="display:flex;align-items:center;gap:8px;margin:7px 0 10px">
           <button type="button" class="btn-action" style="width:44px;height:44px;padding:0;font-size:1.2rem;box-shadow:none" onclick="actualizarCantidadCompra(-1)">−</button>
-          <input id="lyvCantidadCompra" type="number" min="1" max="99" value="1" inputmode="numeric" style="margin:0;text-align:center;width:74px;height:44px;font-size:1rem;font-weight:800" oninput="actualizarResumenCantidadCompra()">
+          <input id="lyvCantidadCompra" type="number" min="${lim.min}" max="${lim.max}" value="1" inputmode="numeric" style="margin:0;text-align:center;width:74px;height:44px;font-size:1rem;font-weight:800" oninput="actualizarResumenCantidadCompra()">
           <button type="button" class="btn-action" style="width:44px;height:44px;padding:0;font-size:1.2rem;box-shadow:none" onclick="actualizarCantidadCompra(1)">+</button>
         </div>
         <div style="font-size:.75rem;color:var(--text-muted)">Precio unitario: $${precio.toFixed(2)} MXN</div>
         <div id="lyvTotalCompra" style="font-size:1.15rem;color:var(--accent-blue);font-weight:900">$${total.toFixed(2)} MXN</div>
         <div id="lyvSaldoDespuesCompra" style="font-size:.75rem;color:var(--text-muted)">Saldo después de la compra: $${(saldoActual-total).toFixed(2)} MXN</div>
       </div>
-      <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">La cantidad se guarda en el pedido. El backend deberá validar posteriormente los límites de apilado del producto en SixoFire.</div>
+      <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">${escapeHtml(cantidadNota)} La validación se toma del catálogo real de SixoFire.</div>
       <div class="modal-actions"><button class="btn-action" onclick="confirmarCompraVisual()">Confirmar compra</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
+async function resolverProductoProviderId(producto){
+    const explicit=producto?.sixofire_product_id ?? producto?.product_id ?? producto?.provider_product_id;
+    if(explicit) return String(explicit);
+    try{
+        const data=await llamarCleverEndpoint({action:'catalog'});
+        const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
+        const nombre=String(producto?.nombre||'').trim().toLowerCase();
+        const item=items.find(x=>{
+            const n=String(x?.name||x?.title||'').trim().toLowerCase();
+            return n===nombre || (nombre==='1 fragmento' && /fragmento universal|1 fragmento/.test(n));
+        });
+        if(item){
+            const id=item?.id ?? item?.product_id ?? item?.productId;
+            if(id) return String(id);
+        }
+    }catch(e){
+        console.warn('No se pudo resolver product_id de SixoFire:',e);
+    }
+    // ID conocido de la prueba real que ya está configurada en el panel admin.
+    if(String(producto?.nombre||'').trim().toLowerCase()==='1 fragmento') return '17729';
+    return null;
+}
+
 async function confirmarCompraVisual(){
-    if(!usuarioActual){alert('Inicia sesión para realizar tu compra.');cambiarVista('login');return;}
-    if(!idFreeFire){alert('Ingresa y confirma tu ID de Free Fire en la parte superior de la tienda.');return;}
-    if(!productoElegido){alert('Selecciona un paquete del catálogo.');return;}
+    if(!lyvPendingPurchase){
+        const input=document.getElementById('lyvCantidadCompra');
+        const cantidad=Math.max(1,Math.min(99,Number(input?.value)||1));
+        const precio=Number(productoElegido?.precio ?? productoElegido?.mxn ?? 0);
+        lyvPendingPurchase={producto:{...productoElegido},idFreeFire,precio,cantidad,total:precio*cantidad};
+    }
 
     const input=document.getElementById('lyvCantidadCompra');
-    const cantidad=Math.max(1,Math.min(99,Number(input?.value)||1));
-    const precio=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
-    const total=precio*cantidad;
+    const cantidad=Math.max(1,Math.min(99,Number(input?.value)||lyvPendingPurchase.cantidad||1));
+    const p={...lyvPendingPurchase,cantidad,total:Number(lyvPendingPurchase.precio||0)*cantidad};
 
-    if(saldoActual < total){
+    const lim=obtenerLimiteCantidadProducto();
+    if(p.cantidad<lim.min || p.cantidad>lim.max){
+        alert('La cantidad está fuera del límite real del producto en SixoFire.');
+        return;
+    }
+
+    // En modo prueba se permite enviar la orden aunque el saldo de la tienda sea 0.
+    // NO se descuenta saldo local mientras estamos probando.
+    const modoPrueba=window.LYV_SIXOFIRE_TEST_MODE===true;
+    if(!modoPrueba && saldoActual<p.total){
         alert('Saldo insuficiente para esa cantidad.');
-        cerrarModal();
         cambiarVista('billetera');
         return;
     }
 
     const btn=document.querySelector('#lyvModalBox .modal-actions .btn-action');
-    if(btn){btn.disabled=true;btn.textContent='Procesando pedido...';}
-    const aviso=document.getElementById('lyvAvisoCantidadCompra');
-    if(aviso){aviso.innerHTML='<span style="color:#ffc107">⏳ Enviando la orden real a SixoFire. No cierres esta ventana.</span>';}
+    if(btn){btn.disabled=true;btn.textContent='Enviando a SixoFire...';}
 
     try{
-        // El ID del proveedor puede venir configurado en el producto.
-        // Si no existe, consultamos el catálogo real y buscamos una coincidencia por nombre.
-        let providerProductId=productoElegido.providerId || productoElegido.sixofireProductId || null;
-
+        const providerProductId=await resolverProductoProviderId(p.producto);
         if(!providerProductId){
-            const cat=await llamarCleverEndpoint({action:'catalog'});
-            if(cat?.code!=='CATALOG_OK') throw new Error(cat?.message||cat?.code||'No se pudo consultar el catálogo de SixoFire.');
-            const items=Array.isArray(cat?.catalog?.items)?cat.catalog.items:[];
-            const objetivo=String(productoElegido.nombre||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-            const tokens=objetivo.split(/\s+/).filter(Boolean);
-            const encontrado=items.find(x=>{
-                if(x?.available===false || x?.isActive===false) return false;
-                const nombre=String(x?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-                return nombre===objetivo || (tokens.length>=2 && tokens.every(t=>nombre.includes(t)));
-            });
-            providerProductId=encontrado?.id ?? null;
+            throw new Error('No se encontró el product_id de SixoFire para este producto. Prueba con 1 Fragmento.');
         }
 
-        if(!providerProductId){
-            throw new Error('No se encontró el producto seleccionado en el catálogo de SixoFire.');
-        }
-
-        // IMPORTANTE: la cantidad viaja al backend; el backend debe enviarla a SixoFire.
-        const data=await llamarCleverEndpoint({
+        const respuesta=await llamarCleverEndpoint({
             action:'shop_order',
-            uid:String(idFreeFire),
+            uid:String(p.idFreeFire),
             product_id:String(providerProductId),
-            quantity:cantidad
+            quantity:Number(p.cantidad)
         });
 
-        if(data?.code!=='SHOP_ORDER_CREATED'){
-            throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
+        if(!respuesta?.ok){
+            throw new Error(respuesta?.message||'SixoFire no pudo crear la orden.');
         }
 
-        const providerId=data?.provider_order_id ?? data?.order_id ?? null;
-        const providerStatus=String(data?.status||'PENDING');
         const idOrden=generarIdOrdenUnico();
+        const providerId=respuesta.provider_order_id||null;
 
-        // El saldo SOLO se descuenta después de que SixoFire confirma la orden.
-        saldoActual-=total;
-        gastoTotal+=total;
+        // En producción se descontará del saldo persistente después de integrar
+        // el débito atómico. En modo prueba no se toca el saldo.
+        if(!modoPrueba){
+            saldoActual-=p.total;
+            gastoTotal+=p.total;
+        }
+
         totalOrdenesCount++;
 
         const orden={
             id:idOrden,
             usuario:usuarioActual,
             email:correoUsuario,
-            ffid:String(idFreeFire),
-            producto:productoElegido.nombre,
-            cantidad,
-            precioUnitario:precio,
-            precio:total,
+            ffid:p.idFreeFire,
+            producto:p.producto.nombre,
+            cantidad:p.cantidad,
+            precioUnitario:p.precio,
+            precio:p.total,
             metodoPago:'saldo',
-            estado:'CONFIRMADA · PENDIENTE DE ENTREGA',
-            estadoProveedor:providerStatus,
+            estado:'ORDEN ENVIADA A SIXOFIRE',
+            estadoProveedor:respuesta.status||null,
             providerOrderId:providerId,
             providerProductId:String(providerProductId),
+            modoPrueba,
             fecha:new Date().toLocaleString(),
             timestamp:Date.now(),
             tipo:'compra'
@@ -2322,24 +2369,60 @@ async function confirmarCompraVisual(){
         historialOrdenes.unshift(orden);
         window.lyvAllOrders=window.lyvAllOrders||[];
         window.lyvAllOrders.unshift(orden);
-        localStorage.setItem('lyv_last_provider_order_id',String(providerId||''));
-        localStorage.setItem('lyv_provider_status',providerStatus);
-        localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
 
-        lyvLog('SIXOFIRE SHOP_ORDER',`${idOrden} creada · proveedor ${providerId||'sin ID'} · UID ${idFreeFire} · producto ${providerProductId} · cantidad ${cantidad}`);
+        lyvLog(
+            'SIXOFIRE',
+            `${idOrden} creada · proveedor ${providerId||'sin ID'} · FF ${p.idFreeFire}`
+        );
+
         actualizarPanelesUsuario();
         renderizarHistorial();
         renderAdminDashboard();
         lyvPendingPurchase=null;
 
-        abrirModal(`<div style="text-align:center"><div style="font-size:2.8rem">✅</div><h3 style="margin:8px 0">¡Compra confirmada!</h3><p style="font-size:.8rem;color:var(--text-muted)">La orden real fue aceptada por SixoFire.</p><div class="order-item" style="text-align:left;margin-top:12px"><b>Pedido:</b> ${idOrden}<br><b>Producto:</b> ${escapeHtml(productoElegido.nombre)}<br><b>Cantidad:</b> ${cantidad}<br><b>Total:</b> $${total.toFixed(2)} MXN<br><b>ID Free Fire:</b> ${escapeHtml(idFreeFire)}<br><b>ID proveedor:</b> ${escapeHtml(String(providerId||'No informado'))}<br><b>Estado:</b> <span style="color:#ffc107">${escapeHtml(providerStatus)}</span></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button></div></div>`);
+        abrirModal(`
+          <div style="text-align:center">
+            <div style="font-size:2.8rem">✅</div>
+            <h3 style="margin:8px 0">¡Orden enviada a SixoFire!</h3>
+            <p style="font-size:.8rem;color:var(--text-muted)">
+              La tienda recibió la respuesta real del proveedor.
+            </p>
+            <div class="order-item" style="text-align:left;margin-top:12px">
+              <b>Pedido Lyv:</b> ${escapeHtml(idOrden)}<br>
+              <b>ID SixoFire:</b> ${escapeHtml(providerId||'No devuelto')}<br>
+              <b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br>
+              <b>Product ID:</b> ${escapeHtml(providerProductId)}<br>
+              <b>Cantidad:</b> ${p.cantidad}<br>
+              <b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br>
+              <b>Estado:</b> <span style="color:#ffc107">${escapeHtml(respuesta.status||'Creada')}</span>
+            </div>
+            ${modoPrueba?'<p style="font-size:.7rem;color:#ffc107;margin-top:9px">🧪 MODO PRUEBA: no se descontó saldo de la tienda.</p>':''}
+            <div class="modal-actions">
+              <button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button>
+              <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button>
+            </div>
+          </div>
+        `);
     }catch(e){
-        console.error('SHOP_ORDER:',e);
-        if(btn){btn.disabled=false;btn.textContent='Confirmar compra';}
-        if(aviso) aviso.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(String(e?.message||e||'No se pudo crear la orden.'))+'</span>';
-        alert(String(e?.message||e||'No se pudo crear la orden real.'));
+        console.error('Error creando orden SixoFire:',e);
+        abrirModal(`
+          <div style="text-align:center">
+            <div style="font-size:2.5rem">❌</div>
+            <h3 style="margin:8px 0">SixoFire rechazó la orden</h3>
+            <p style="font-size:.8rem;color:var(--text-muted);line-height:1.45">
+              ${escapeHtml(e?.message||'Error desconocido.')}
+            </p>
+            <p style="font-size:.7rem;color:#ffc107;margin-top:9px">
+              No se descontó saldo.
+            </p>
+            <button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button>
+          </div>
+        `);
+    }finally{
+        lyvPendingPurchase=null;
     }
 }
+
 function generarIdOrdenUnico(){let id;do{id='ORD-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllOrders||[]).some(o=>o.id===id));return id;}
 window.comprarPaqueteReal=mostrarConfirmacionCompra;
 
@@ -2454,7 +2537,9 @@ function rechazarReporteOxxo(id){
 function cargarCreditosManualesVisual(){try{window.lyvManualCredits=JSON.parse(localStorage.getItem('lyv_manual_credits')||'[]')||[];}catch(e){window.lyvManualCredits=[];}renderAdminCreditosManuales();}
 function persistirCreditosManualesVisual(){try{localStorage.setItem('lyv_manual_credits',JSON.stringify((window.lyvManualCredits||[]).slice(0,100)));}catch(e){}}
 function renderAdminCreditosManuales(){const c=document.getElementById('adminCreditosManuales');if(!c)return;const arr=window.lyvManualCredits||[];c.innerHTML=arr.length?arr.map(x=>`<div class="admin-row" style="margin-top:7px;align-items:flex-start;gap:8px"><div style="flex:1"><b>${escapeHtml(x.ajusteId)}</b><div style="font-size:.72rem;color:var(--text-muted)">Usuario: ${escapeHtml(x.usuarioId)} • +$${Number(x.monto||0).toFixed(2)} MXN</div><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(x.motivo||'Sin motivo')} • ${escapeHtml(x.fecha)}</div><div style="font-size:.68rem;color:#6ee7a0">Registrado por: ${escapeHtml(x.admin||'admin')}</div></div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Todavía no hay ajustes manuales.</div>';}
-function acreditarCreditoAdminVisual(){const uid=(document.getElementById('adminCreditoUsuarioId')?.value||'').trim();const monto=Number(document.getElementById('adminCreditoMonto')?.value||0);const motivo=(document.getElementById('adminCreditoMotivo')?.value||'').trim();if(!uid){alert('Ingresa el ID del usuario.');return;}if(!Number.isFinite(monto)||monto<=0){alert('Ingresa un monto válido mayor a 0.');return;}if(!motivo){alert('Indica el motivo del ajuste.');return;}const ajusteId='AJU-'+String(Date.now()).slice(-8);if(!confirm(`¿Acreditar $${monto.toFixed(2)} MXN al usuario ${uid}?\n\nMotivo: ${motivo}\nID de ajuste: ${ajusteId}`))return;window.lyvManualCredits=window.lyvManualCredits||[];window.lyvManualCredits.unshift({ajusteId,usuarioId:uid,monto,moneda:'MXN',motivo,admin:correoUsuario||'admin',fecha:new Date().toLocaleString()});persistirCreditosManualesVisual();lyvLog('CRÉDITO MANUAL',`${ajusteId}: +$${monto.toFixed(2)} MXN a ${uid} — ${motivo}`);renderAdminCreditosManuales();const out=document.getElementById('adminCreditoResultado');if(out)out.innerHTML=`<div style="padding:9px;border-radius:10px;border:1px solid rgba(110,231,160,.25);background:rgba(110,231,160,.06);font-size:.72rem;color:#6ee7a0">✓ Ajuste ${ajusteId} preparado y registrado visualmente. El backend deberá acreditar el saldo real de forma atómica y única.</div>`;document.getElementById('adminCreditoUsuarioId').value='';document.getElementById('adminCreditoMonto').value='';document.getElementById('adminCreditoMotivo').value='';}
+function acreditarCreditoAdminVisual(){const uid=(document.getElementById('adminCreditoUsuarioId')?.value||'').trim();const montoEl=document.getElementById('adminCreditoMonto');const rawMonto=String(montoEl?.value ?? '').replace(',','.').trim();const monto=Number.isFinite(montoEl?.valueAsNumber)?Number(montoEl.valueAsNumber):Number(rawMonto);const motivo=(document.getElementById('adminCreditoMotivo')?.value||'').trim();if(!uid){alert('Ingresa el ID del usuario.');return;}if(!Number.isFinite(monto)||monto<=0){alert('Ingresa un monto válido mayor a 0.');return;}if(!motivo){alert('Indica el motivo del ajuste.');return;}const ajusteId='AJU-'+String(Date.now()).slice(-8);if(!confirm(`¿Acreditar $${monto.toFixed(2)} MXN al usuario ${uid}?\n\nMotivo: ${motivo}\nID de ajuste: ${ajusteId}`))return;window.lyvManualCredits=window.lyvManualCredits||[];window.lyvManualCredits.unshift({ajusteId,usuarioId:uid,monto,moneda:'MXN',motivo,admin:correoUsuario||'admin',fecha:new Date().toLocaleString()});persistirCreditosManualesVisual();
+    const uidNorm=uid.toLowerCase(); const soyYo=[String(correoUsuario||''),String(usuarioActual||'')].map(x=>x.trim().toLowerCase()).includes(uidNorm);
+    if(soyYo){saldoActual=Number((saldoActual+monto).toFixed(2));try{localStorage.setItem('lyv_saldo_prueba_'+String(correoUsuario||usuarioActual),String(saldoActual));}catch(e){} actualizarPanelesUsuario();}lyvLog('CRÉDITO MANUAL',`${ajusteId}: +$${monto.toFixed(2)} MXN a ${uid} — ${motivo}`);renderAdminCreditosManuales();const out=document.getElementById('adminCreditoResultado');if(out)out.innerHTML=`<div style="padding:9px;border-radius:10px;border:1px solid rgba(110,231,160,.25);background:rgba(110,231,160,.06);font-size:.72rem;color:#6ee7a0">✓ Ajuste ${ajusteId} preparado y registrado visualmente. El backend deberá acreditar el saldo real de forma atómica y única.</div>`;document.getElementById('adminCreditoUsuarioId').value='';document.getElementById('adminCreditoMonto').value='';document.getElementById('adminCreditoMotivo').value='';}
 
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
