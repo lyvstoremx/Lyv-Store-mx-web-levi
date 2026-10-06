@@ -1661,36 +1661,71 @@
         let sistemaEnMantenimiento = false;
         let saldoActual = 0.00;
 async function cargarSaldoReal(){
+  // El saldo pertenece al usuario autenticado de Supabase, NO al ID de Free Fire.
+  // Primero usamos la función RPC SECURITY DEFINER para evitar problemas de RLS.
   try{
     const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
     if(userError) throw userError;
-    if(!user?.id){ saldoActual=0; actualizarPanelesUsuario(); return; }
+    if(!user?.id){
+      saldoActual=0;
+      actualizarPanelesUsuario();
+      return;
+    }
 
-    // Lectura directa de la billetera propia con RLS: user_id debe ser auth.uid().
-    const {data:wallet,error:walletError}=await lyvSupabase
-      .from('lyv_wallets')
-      .select('balance_mxn')
-      .eq('user_id',user.id)
-      .maybeSingle();
+    let balance=null;
 
-    if(walletError) throw walletError;
+    // 1) Fuente principal: RPC segura de Supabase.
+    const {data:rpcBalance,error:rpcError}=await lyvSupabase.rpc('lyv_get_wallet_balance');
+    if(!rpcError && rpcBalance !== null && rpcBalance !== undefined){
+      // La función puede devolver un número o una fila según cómo esté definida.
+      if(typeof rpcBalance === 'number' || typeof rpcBalance === 'string'){
+        balance=Number(rpcBalance);
+      }else if(Array.isArray(rpcBalance) && rpcBalance.length){
+        balance=Number(rpcBalance[0]?.balance_mxn ?? rpcBalance[0] ?? 0);
+      }else if(typeof rpcBalance === 'object'){
+        balance=Number(rpcBalance.balance_mxn ?? rpcBalance[0]?.balance_mxn ?? 0);
+      }
+    }
 
-    saldoActual=Number(wallet?.balance_mxn ?? 0);
+    // 2) Respaldo: consultar directamente la billetera del perfil autenticado.
+    if(!Number.isFinite(balance)){
+      const {data:perfil,error:perfilError}=await lyvSupabase
+        .from('profiles')
+        .select('id')
+        .eq('id',user.id)
+        .maybeSingle();
+
+      if(!perfilError && perfil?.id){
+        const {data:wallet,error:walletError}=await lyvSupabase
+          .from('lyv_wallets')
+          .select('balance_mxn')
+          .eq('user_id',perfil.id)
+          .maybeSingle();
+        if(!walletError && wallet){
+          balance=Number(wallet.balance_mxn);
+        }
+      }
+    }
+
+    // 3) Último respaldo: Edge Function con la sesión autenticada.
+    if(!Number.isFinite(balance)){
+      try{
+        const remote=await llamarCleverEndpoint({action:'wallet_balance'});
+        if(remote?.ok && remote.balance_mxn !== undefined){
+          balance=Number(remote.balance_mxn);
+        }
+      }catch(e){
+        console.warn('No se pudo consultar wallet_balance por backend:',e);
+      }
+    }
+
+    if(!Number.isFinite(balance)) balance=0;
+    saldoActual=balance;
     actualizarPanelesUsuario();
 
-    // También sincronizamos por backend para validar que la sesión y RPC coinciden.
-    try{
-      const remote=await llamarCleverEndpoint({action:'wallet_balance'});
-      if(remote?.ok && Number.isFinite(Number(remote.balance_mxn))){
-        saldoActual=Number(remote.balance_mxn);
-        actualizarPanelesUsuario();
-      }
-    }catch(e){
-      console.warn('RPC wallet_balance no disponible; se conserva la lectura directa:',e);
-    }
   }catch(e){
     console.error('No se pudo cargar saldo real:',e);
-    saldoActual=0;
+    // No inventamos un saldo. Si la lectura falla, mostramos el último valor conocido.
     actualizarPanelesUsuario();
   }
 }
@@ -1845,7 +1880,7 @@ async function cargarSaldoReal(){
             let perfil = null;
             let errorPerfil = null;
             try {
-                const {data,error}=await lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
+                const {data,error}=await lyvSupabase.from('profiles').select('id,lyv_user_id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
                 if(error) throw error;
                 perfil = data || null;
             } catch(e) {
@@ -1862,6 +1897,7 @@ async function cargarSaldoReal(){
             correoUsuario = user.email || perfil?.email || correoUsuario;
             usuarioActual = perfil?.username || baseAuth;
             perfilNombreActual = perfil?.display_name || perfilNombreActual || usuarioActual;
+            window.lyvUserId = perfil?.lyv_user_id || window.lyvUserId || '';
             if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
             await cargarSaldoReal();
 
@@ -2607,11 +2643,19 @@ async function acreditarCreditoAdminVisual(){
       persistirCreditosManualesVisual();
       renderAdminCreditosManuales();
 
-      if(String(target).toLowerCase()===String(correoUsuario).toLowerCase() || String(target)===String(usuarioActual)){
-        saldoActual=Number(data.balance_mxn||saldoActual);
-      }
+      // Si el crédito fue para la cuenta actual, vuelve a leer la billetera real.
+      // Esto también funciona cuando el administrador acredita usando LYV-00000X.
+      const targetNormalizado=String(target||'').trim().toLowerCase();
+      const esCuentaActual =
+        targetNormalizado === String(correoUsuario||'').trim().toLowerCase() ||
+        targetNormalizado === String(usuarioActual||'').trim().toLowerCase() ||
+        targetNormalizado === String(window.lyvUserId||'').trim().toLowerCase();
 
-      actualizarPanelesUsuario();
+      if(esCuentaActual){
+        await cargarSaldoReal();
+      }else{
+        actualizarPanelesUsuario();
+      }
 
       const out=document.getElementById('adminCreditoResultado');
       if(out) out.innerHTML=`<div style="padding:10px;border-radius:10px;border:1px solid rgba(110,231,160,.3);background:rgba(110,231,160,.07);font-size:.74rem;color:#6ee7a0">✓ Crédito real aplicado: <b>+$${Number(data.amount_mxn||amount).toFixed(2)} MXN</b><br>ID de ajuste: <b>${escapeHtml(data.reference||'-')}</b><br>Saldo del usuario: <b>$${Number(data.balance_mxn||0).toFixed(2)} MXN</b></div>`;
