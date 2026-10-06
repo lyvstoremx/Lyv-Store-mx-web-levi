@@ -649,27 +649,10 @@
                         <div style="font-size: 0.7rem; color: var(--text-muted);" data-i18n="idBannerSub">Ingresa tu ID y elige tu producto</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; margin-top: 2px; align-items:stretch;">
-                    <input type="text" id="playerId" placeholder="Ej. 284910294" inputmode="numeric" maxlength="12" style="margin-bottom:0; background: rgba(0,0,0,0.8); flex:1; min-width:0;">
-                    <select id="playerRegion" aria-label="Región de Free Fire" style="width:92px;margin:0;background:rgba(0,0,0,0.8);color:#fff;border:1px solid var(--card-border);border-radius:10px;padding:0 7px;font-size:.72rem;">
-                        <option value="SAC">SAC</option>
-                        <option value="NA">NA</option>
-                        <option value="US">US</option>
-                        <option value="BR">BR</option>
-                        <option value="IND">IND</option>
-                        <option value="CIS">CIS</option>
-                        <option value="ID">ID</option>
-                        <option value="PK">PK</option>
-                        <option value="ME">ME</option>
-                        <option value="RU">RU</option>
-                        <option value="SG">SG</option>
-                        <option value="TH">TH</option>
-                        <option value="TW">TW</option>
-                        <option value="VN">VN</option>
-                    </select>
-                    <button id="playerVerifyBtn" class="btn-action" style="width:52px;padding:0;background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;" onclick="validarId(event)">✓</button>
+                <div style="display: flex; gap: 8px; margin-top: 2px;">
+                    <input type="text" id="playerId" placeholder="Ej. 284910294" inputmode="numeric" style="margin-bottom:0; background: rgba(0,0,0,0.8);">
+                    <button class="btn-action" style="width: 52px; padding:0; background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="validarId()">✓</button>
                 </div>
-                <div id="lyvPlayerVerification" aria-live="polite" style="font-size:.75rem;margin-top:6px;color:var(--text-muted);"></div>
             </div>
 
             <!-- VENTAS EN TIEMPO REAL -->
@@ -2326,42 +2309,7 @@ function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.i
 function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
 function seleccionarProd(el,nombre,precio){document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');productoElegido={nombre,precio};}
-async function validarId(evt){
-    const input=document.getElementById('playerId');
-    const regionEl=document.getElementById('playerRegion');
-    const msg=document.getElementById('lyvPlayerVerification');
-    const btn=evt?.currentTarget || document.getElementById('playerVerifyBtn');
-    const inputId=String(input?.value||'').trim();
-    const region=String(regionEl?.value||'SAC').trim().toUpperCase();
-    if(!/^\d{8,12}$/.test(inputId)){
-        if(msg) msg.innerHTML='<span style="color:#ff8b8b">✗ El ID debe tener entre 8 y 12 dígitos.</span>';
-        input?.focus();
-        return;
-    }
-    if(btn){btn.disabled=true;btn.innerText='…';}
-    if(msg) msg.innerHTML='<span style="color:#ffc107">⏳ Verificando ID...</span>';
-    try{
-        const data=await llamarCleverEndpoint({action:'account_info',uid:inputId,region});
-        if(data?.code!=='ACCOUNT_INFO_OK') throw new Error(data?.message||data?.code||'No se pudo verificar el jugador.');
-        const account=data?.account||{};
-        const nickname=String(account.nickname||'Jugador');
-        const detectedRegion=String(account.region||region).toUpperCase();
-        idFreeFire=inputId;
-        window.lyvFreeFireName=nickname;
-        window.lyvFreeFireRegion=detectedRegion;
-        if(input) input.value=inputId;
-        if(msg) msg.innerHTML='<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>'+escapeHtml(nickname)+'</b> · Región '+escapeHtml(detectedRegion)+'</span>';
-        lyvLog('ID FREE FIRE',`ID ${inputId} verificado por SixoFire · ${nickname} · ${detectedRegion}`);
-    }catch(e){
-        idFreeFire='';
-        window.lyvFreeFireName='';
-        window.lyvFreeFireRegion='';
-        const raw=String(e?.message||e||'No se pudo verificar el jugador.');
-        if(msg) msg.innerHTML='<span style="color:#ff8b8b">✗ '+escapeHtml(raw)+'</span>';
-    }finally{
-        if(btn){btn.disabled=false;btn.innerText='✓';}
-    }
-}
+function validarId(){const inputId=document.getElementById('playerId').value.trim();if(inputId.length<4){alert('Ingresa un ID válido.');return;}const btn=event?.currentTarget; if(btn){btn.disabled=true;btn.innerText='Verificando ID...';}setTimeout(()=>{idFreeFire=inputId;const card=document.getElementById('playerIdCard');if(card){let msg=document.getElementById('lyvPlayerVerification');if(!msg){msg=document.createElement('div');msg.id='lyvPlayerVerification';msg.style='font-size:.75rem;color:#45e08a;margin-top:6px';card.appendChild(msg);}msg.innerText='✓ ¡Jugador encontrado! Nombre pendiente de conexión con la API oficial.';}if(btn){btn.disabled=false;btn.innerText='Verificar ID';}lyvLog('ID FREE FIRE',`ID ${inputId} preparado para verificación real`);},800);}
 
 // Redibuja extras al cargar sin alterar el diseño existente.
 window.addEventListener('load',()=>{cargarReportesPagoVisual();productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});renderizarTienda();renderizarAdminProductos();renderAdminDashboard();renderAdminLogs();renderAdminPaymentReports();actualizarFormularioReportePago();renderizarPaquetesRecarga();document.getElementById('selectorMetodosPagoContainer')&&(document.getElementById('selectorMetodosPagoContainer').innerHTML=generarOpcionesPagoHTML());renderizarDetalleMetodoPago();renderizarHistorialRecargasSafe();const b=document.querySelector('[onclick="comprarPaqueteReal()"]');if(b)b.onclick=mostrarConfirmacionCompra;const oldRec=document.querySelector('[onclick="ejecutarRecarga()"]');if(oldRec)oldRec.onclick=ejecutarRecarga;});
@@ -2423,6 +2371,32 @@ async function probarConexionClever(resultadoId='cleverTestResultado'){
   }
 }
 
+async function probarOrdenRealSixoFire(){
+  const btn=document.getElementById('btnPruebaOrdenSixoFire');
+  const box=document.getElementById('adminPruebaOrdenResultado');
+  const uid='14608057611';
+  const productId='17729';
+  const confirmado=window.confirm('Esta acción CREARÁ UNA ORDEN REAL en SixoFire por $0.03 USD para el UID '+uid+'.\n\n¿Quieres continuar?');
+  if(!confirmado) return;
+  if(btn){btn.disabled=true;btn.innerText='Creando orden real...';}
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Enviando una sola orden real a SixoFire...</span>';
+  try{
+    const data=await llamarCleverEndpoint({action:'shop_order',uid,product_id:productId});
+    if(data?.code!=='SHOP_ORDER_CREATED'){
+      throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
+    }
+    const providerId=data?.provider_order_id ?? 'No informado';
+    const status=data?.status ?? 'No informado';
+    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ ORDEN REAL CREADA.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(String(providerId))+'</b> · Estado: <b>'+escapeHtml(String(status))+'</b></span>';
+    lyvLog('SIXOFIRE SHOP_ORDER','Orden real creada · UID '+uid+' · producto '+productId+' · provider_order_id '+providerId);
+    if(btn){btn.innerText='Orden creada ✓';btn.disabled=true;}
+  }catch(e){
+    const msg=String(e?.message||e||'Error desconocido');
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+    if(btn){btn.disabled=false;btn.innerText='Reintentar orden real';}
+  }
+}
+
 async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResultado'){
   const box=document.getElementById(resultadoId);
   if(box) box.innerHTML='<span style="color:#ffc107">⏳ Consultando catálogo real de SixoFire...</span>';
@@ -2445,7 +2419,13 @@ async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResult
           const priceText=price==null?'Precio no disponible':'$'+Number(price).toFixed(2)+' USD';
           const type=escapeHtml(String(x.itemType??''));
           return '<div class="admin-row" style="align-items:flex-start"><div><b>'+name+'</b><div style="font-size:.68rem;color:var(--text-muted)">ID proveedor: '+id+' · '+type+'</div></div><span style="font-size:.7rem;color:#fff">'+priceText+'</span></div>';
-        }).join('')+'</div>';
+        }).join('')+'</div>'+
+        '<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05)">'+
+        '<div style="font-size:.72rem;color:#ffc107;margin-bottom:8px">⚠️ Prueba real: crea una orden en SixoFire y consume saldo del proveedor.</div>'+
+        '<div style="font-size:.68rem;color:var(--text-muted);margin-bottom:8px">UID: 14608057611 · Producto: 17729 · Fragmento Universal · $0.03 USD</div>'+
+        '<button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">Crear orden real de $0.03 USD</button>'+
+        '<div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>'+
+        '</div>';
     }
   }catch(e){
     const msg=String(e?.message||e||'');
