@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1710,34 +1710,60 @@
 
         async function iniciarSesionSocial(proveedor) {
             try {
-                const {error}=await lyvSupabase.auth.signInWithOAuth({provider,options:{redirectTo:'https://lyvstoremxfinallista.vercel.app/'}});
+                const {error}=await lyvSupabase.auth.signInWithOAuth({provider: proveedor, options:{redirectTo: window.location.origin + '/'}});
                 if(error) throw error;
             } catch(e) { alert('Este acceso social todavía no está habilitado en Supabase: '+(e?.message||'revisa el proveedor.')); }
         }
 
         async function cargarSesionSupabase(user) {
             if(!user) return;
-            const {data:perfil,error}=await lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
-            if(error) throw error;
-            if(perfil?.is_blocked){ await lyvSupabase.auth.signOut(); throw new Error('Esta cuenta está bloqueada.'); }
-            correoUsuario = user.email || perfil?.email || '';
-            const baseUsuario = perfil?.username || correoUsuario.split('@')[0] || 'usuario';
-            usuarioActual = baseUsuario;
-            perfilNombreActual = perfil?.display_name || baseUsuario;
+            // Primero reflejamos la sesión real de Supabase para que el usuario no quede
+            // atascado en "Ingresar" si la consulta del perfil tarda o falla.
+            correoUsuario = user.email || user.user_metadata?.email || '';
+            const metadataUsuario = user.user_metadata?.user_name || user.user_metadata?.preferred_username || '';
+            const baseAuth = metadataUsuario || correoUsuario.split('@')[0] || 'usuario';
+            usuarioActual = baseAuth;
+            perfilNombreActual = user.user_metadata?.full_name || user.user_metadata?.name || baseAuth;
+
+            let perfil = null;
+            let errorPerfil = null;
+            try {
+                const {data,error}=await lyvSupabase.from('profiles').select('id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
+                if(error) throw error;
+                perfil = data || null;
+            } catch(e) {
+                errorPerfil = e;
+                console.error('No se pudo cargar profiles:', e);
+            }
+
+            if(perfil?.is_blocked){
+                await lyvSupabase.auth.signOut();
+                usuarioActual = null;
+                throw new Error('Esta cuenta está bloqueada.');
+            }
+
+            correoUsuario = user.email || perfil?.email || correoUsuario;
+            usuarioActual = perfil?.username || baseAuth;
+            perfilNombreActual = perfil?.display_name || perfilNombreActual || usuarioActual;
             if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
-            document.getElementById('headerUserBtn').innerText = usuarioActual.toUpperCase();
-            document.getElementById('drawerAuthBtn').innerHTML = `<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
-            document.getElementById('catalogAuthBanner').style.display = 'none';
-            document.getElementById('playerIdCard').style.display = 'flex';
-            document.getElementById('perfilMenuLink').style.display = 'flex';
+
+            const h=document.getElementById('headerUserBtn'); if(h) h.innerText = usuarioActual.toUpperCase();
+            const d=document.getElementById('drawerAuthBtn'); if(d) d.innerHTML = `<span data-i18n="cerrarSesion">${translations[currentLang].cerrarSesion}</span>`;
+            const b=document.getElementById('catalogAuthBanner'); if(b) b.style.display = 'none';
+            const p=document.getElementById('playerIdCard'); if(p) p.style.display = 'flex';
+            const pm=document.getElementById('perfilMenuLink'); if(pm) pm.style.display = 'flex';
             const pu=document.getElementById('perfilUsuario'); if(pu) pu.value=usuarioActual;
             const pn=document.getElementById('perfilNombre'); if(pn) pn.value=perfilNombreActual;
             const pc=document.getElementById('perfilCorreo'); if(pc) pc.value=correoUsuario;
             const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
             const esAdmin=perfil?.role==='admin';
-            document.getElementById('adminMenuLink').style.display=esAdmin?'flex':'none';
+            const am=document.getElementById('adminMenuLink'); if(am) am.style.display=esAdmin?'flex':'none';
             if(esAdmin) renderAdminCompleto();
             cambiarVista('dashboard');
+
+            if(errorPerfil){
+                console.warn('Sesión iniciada, pero profiles no pudo cargarse:', errorPerfil);
+            }
         }
 
         async function restaurarSesionSupabase(){
@@ -2290,7 +2316,18 @@ function renderAdminCompleto(){
 
 <script>
 // Restauración de sesión real de Supabase
-window.addEventListener('load',()=>{restaurarSesionSupabase();lyvSupabase.auth.onAuthStateChange((_event,session)=>{if(session?.user && !usuarioActual){setTimeout(()=>cargarSesionSupabase(session.user),0);}});});
+window.addEventListener('load',()=>{
+  restaurarSesionSupabase();
+  lyvSupabase.auth.onAuthStateChange((event,session)=>{
+    if((event==='SIGNED_IN' || event==='INITIAL_SESSION' || event==='TOKEN_REFRESHED') && session?.user){
+      setTimeout(()=>{
+        if(!usuarioActual){
+          cargarSesionSupabase(session.user).catch(e=>console.error('Error cargando sesión:',e));
+        }
+      },0);
+    }
+  });
+});
 </script>
 
 <script>
