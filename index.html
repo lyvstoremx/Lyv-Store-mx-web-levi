@@ -1663,6 +1663,7 @@
         let gastoTotal = 0.00;
         let totalOrdenesCount = 0;
         let productoElegido = null;
+        let cantidadProductoElegido = 1;
         let usuarioActual = null;
         let correoUsuario = "";
         let idFreeFire = "";
@@ -2189,34 +2190,76 @@ function mostrarRecuperacion(){
 }
 async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
+function actualizarCantidadCompra(delta){
+    const input=document.getElementById('lyvCantidadCompra');
+    if(!input || !productoElegido)return;
+    const actual=Math.max(1,Math.min(99,Number(input.value)||1));
+    const siguiente=Math.max(1,Math.min(99,actual+Number(delta||0)));
+    input.value=String(siguiente);
+    actualizarResumenCantidadCompra();
+}
+function actualizarResumenCantidadCompra(){
+    const input=document.getElementById('lyvCantidadCompra');
+    if(!input || !productoElegido)return;
+    const cantidad=Math.max(1,Math.min(99,Number(input.value)||1));
+    input.value=String(cantidad);
+    const unit=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
+    const total=unit*cantidad;
+    const totalEl=document.getElementById('lyvTotalCompra');
+    const saldoEl=document.getElementById('lyvSaldoDespuesCompra');
+    if(totalEl) totalEl.textContent='$'+total.toFixed(2)+' MXN';
+    if(saldoEl) saldoEl.textContent='Saldo después de la compra: $'+(saldoActual-total).toFixed(2)+' MXN';
+}
 function mostrarConfirmacionCompra(){
     if(!usuarioActual){alert('Inicia sesión para realizar tu compra.');cambiarVista('login');return;}
     if(!idFreeFire){alert('Ingresa y confirma tu ID de Free Fire en la parte superior de la tienda.');return;}
     if(!productoElegido){alert('Selecciona un paquete del catálogo.');return;}
+    cantidadProductoElegido=1;
     const precio=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
-    if(saldoActual<precio){alert('Saldo insuficiente. Recarga saldo en tu billetera para continuar.');cambiarVista('billetera');return;}
-    lyvPendingPurchase={producto:{...productoElegido},idFreeFire,precio};
+    const total=precio*cantidadProductoElegido;
     abrirModal(`<div class="card-title" style="color:var(--accent-blue)">🛒 Confirmar compra</div>
-      <div class="order-item"><div><strong>${escapeHtml(productoElegido.nombre)}</strong></div><div style="font-size:.78rem;color:var(--text-muted)">ID Free Fire: <b style="color:#fff">${escapeHtml(idFreeFire)}</b></div><div style="font-size:1.15rem;color:var(--accent-blue);font-weight:900">$${precio.toFixed(2)} MXN</div><div style="font-size:.75rem;color:var(--text-muted)">Saldo después de la compra: $${(saldoActual-precio).toFixed(2)} MXN</div></div>
+      <div class="order-item">
+        <div><strong>${escapeHtml(productoElegido.nombre)}</strong></div>
+        <div style="font-size:.78rem;color:var(--text-muted)">ID Free Fire: <b style="color:#fff">${escapeHtml(idFreeFire)}</b></div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:9px">Cantidad</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:7px 0 10px">
+          <button type="button" class="btn-action" style="width:44px;height:44px;padding:0;font-size:1.2rem;box-shadow:none" onclick="actualizarCantidadCompra(-1)">−</button>
+          <input id="lyvCantidadCompra" type="number" min="1" max="99" value="1" inputmode="numeric" style="margin:0;text-align:center;width:74px;height:44px;font-size:1rem;font-weight:800" oninput="actualizarResumenCantidadCompra()">
+          <button type="button" class="btn-action" style="width:44px;height:44px;padding:0;font-size:1.2rem;box-shadow:none" onclick="actualizarCantidadCompra(1)">+</button>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted)">Precio unitario: $${precio.toFixed(2)} MXN</div>
+        <div id="lyvTotalCompra" style="font-size:1.15rem;color:var(--accent-blue);font-weight:900">$${total.toFixed(2)} MXN</div>
+        <div id="lyvSaldoDespuesCompra" style="font-size:.75rem;color:var(--text-muted)">Saldo después de la compra: $${(saldoActual-total).toFixed(2)} MXN</div>
+      </div>
+      <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">La cantidad se guarda en el pedido. El backend deberá validar posteriormente los límites de apilado del producto en SixoFire.</div>
       <div class="modal-actions"><button class="btn-action" onclick="confirmarCompraVisual()">Confirmar compra</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
 function confirmarCompraVisual(){
-    if(!lyvPendingPurchase)return;
-    const p=lyvPendingPurchase; const idOrden=generarIdOrdenUnico();
-    // Visual only: no provider/API call yet. This is the point where backend will create an idempotency key.
-    saldoActual-=p.precio; gastoTotal+=p.precio; totalOrdenesCount++;
-    const orden={id:idOrden,usuario:usuarioActual,email:correoUsuario,ffid:p.idFreeFire,producto:p.producto.nombre,precio:p.precio,metodoPago:'saldo',estado:'CONFIRMADA · PENDIENTE DE ENTREGA',estadoProveedor:null,fecha:new Date().toLocaleString(),timestamp:Date.now(),tipo:'compra'};
+    if(!lyvPendingPurchase){
+        const input=document.getElementById('lyvCantidadCompra');
+        const cantidad=Math.max(1,Math.min(99,Number(input?.value)||1));
+        const precio=Number(productoElegido?.precio ?? productoElegido?.mxn ?? 0);
+        lyvPendingPurchase={producto:{...productoElegido},idFreeFire,precio,cantidad,total:precio*cantidad};
+    }
+    const input=document.getElementById('lyvCantidadCompra');
+    const cantidad=Math.max(1,Math.min(99,Number(input?.value)||lyvPendingPurchase.cantidad||1));
+    const p={...lyvPendingPurchase,cantidad,total:Number(lyvPendingPurchase.precio||0)*cantidad};
+    const idOrden=generarIdOrdenUnico();
+    if(saldoActual<p.total){alert('Saldo insuficiente para esa cantidad.');cambiarVista('billetera');return;}
+    // Visual only: no provider/API call yet. Backend must validate quantity and create the provider order idempotently.
+    saldoActual-=p.total; gastoTotal+=p.total; totalOrdenesCount++;
+    const orden={id:idOrden,usuario:usuarioActual,email:correoUsuario,ffid:p.idFreeFire,producto:p.producto.nombre,cantidad:p.cantidad,precioUnitario:p.precio,precio:p.total,metodoPago:'saldo',estado:'CONFIRMADA · PENDIENTE DE ENTREGA',estadoProveedor:null,fecha:new Date().toLocaleString(),timestamp:Date.now(),tipo:'compra'};
     historialOrdenes.unshift(orden);
     window.lyvAllOrders=window.lyvAllOrders||[]; window.lyvAllOrders.unshift(orden);
     lyvLog('COMPRA',`${idOrden} creada para ${p.producto.nombre} / FF ${p.idFreeFire}`);
     actualizarPanelesUsuario(); renderizarHistorial(); renderAdminDashboard();
     lyvPendingPurchase=null;
-    abrirModal(`<div style="text-align:center"><div style="font-size:2.8rem">✅</div><h3 style="margin:8px 0">¡Compra confirmada!</h3><p style="font-size:.8rem;color:var(--text-muted)">Tu pedido fue registrado correctamente.</p><div class="order-item" style="text-align:left;margin-top:12px"><b>Pedido:</b> ${idOrden}<br><b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br><b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br><b>Estado:</b> <span style="color:#ffc107">Confirmada · Pendiente de entrega</span></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button></div></div>`);
+    abrirModal(`<div style="text-align:center"><div style="font-size:2.8rem">✅</div><h3 style="margin:8px 0">¡Compra confirmada!</h3><p style="font-size:.8rem;color:var(--text-muted)">Tu pedido fue registrado correctamente.</p><div class="order-item" style="text-align:left;margin-top:12px"><b>Pedido:</b> ${idOrden}<br><b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br><b>Cantidad:</b> ${p.cantidad}<br><b>Total:</b> $${Number(p.total).toFixed(2)} MXN<br><b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br><b>Estado:</b> <span style="color:#ffc107">Confirmada · Pendiente de entrega</span></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button></div></div>`);
 }
 function generarIdOrdenUnico(){let id;do{id='ORD-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllOrders||[]).some(o=>o.id===id));return id;}
 window.comprarPaqueteReal=mostrarConfirmacionCompra;
 
-function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(o.estado||'Pendiente')}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado definitivo será determinado por la API del proveedor cuando se conecte. Esta fase no inventa estados del proveedor.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
+function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}${o.cantidad?` · Cantidad: ${o.cantidad}`:''}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(o.estado||'Pendiente')}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado definitivo será determinado por la API del proveedor cuando se conecte. Esta fase no inventa estados del proveedor.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
 
 function renderizarHistorial(){const c=document.getElementById('listaHistorial');if(!c)return;const arr=historialOrdenes.filter(o=>o.tipo!=='recarga');if(!arr.length){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay pedidos registrados.</div>';return;}c.innerHTML=arr.map(o=>`<div class="order-item"><div class="order-header"><span>${escapeHtml(o.producto||o.nombre)}</span><span class="badge-status status-pending">${escapeHtml(o.estado)}</span></div><div style="font-size:.72rem;color:var(--text-muted)">Pedido: ${escapeHtml(o.id)} • ${escapeHtml(o.fecha)}</div><div style="font-size:.72rem;color:var(--text-muted)">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><button class="btn-action" style="padding:8px;margin-top:4px;background:rgba(255,255,255,.04);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="verPedido('${o.id}')">Ver pedido</button></div>`).join('');}
 
@@ -2337,7 +2380,7 @@ function renderizarAdminProductos(){let list=document.getElementById('adminProdu
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=activo;renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${activo?'Disponible':'No disponible'}`);}
 function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
-function seleccionarProd(el,nombre,precio){document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');productoElegido={nombre,precio};}
+function seleccionarProd(el,nombre,precio){document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');productoElegido={nombre,precio};cantidadProductoElegido=1;}
 async function validarId(){
     const input = document.getElementById('playerId');
     const regionEl = document.getElementById('regionFreeFire');
