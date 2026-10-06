@@ -2230,7 +2230,7 @@ function guardarConfiguracionAdmin(){
     </script>
 <script>
 // =========================================================
-// LYV STORE - CAPA VISUAL FINAL / FASE 1
+// LYV STORE - CAPA FINAL / SixoFire + Supabase
 // Preparada para conectar backend, pagos y proveedor en Fase 2.
 // =========================================================
 const lyvLogs = [];
@@ -2327,16 +2327,14 @@ async function resolverProductoProviderId(producto){
     const explicit=producto?.sixofire_product_id ?? producto?.product_id ?? producto?.provider_product_id;
     if(explicit && /^\d{4,6}$/.test(String(explicit))) return String(explicit);
 
-    // Si el producto local aún no trae el ID de SixoFire, intentamos resolverlo
-    // contra el catálogo real. El backend sigue siendo la autoridad final y
-    // rechazará cualquier producto que no esté configurado en lyv_store_products.
     try{
       const data=await llamarCleverEndpoint({action:'catalog'});
       const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
       const target=String(producto?.nombre||'').trim().toLowerCase();
       const normalize=v=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
       const item=items.find(x=>normalize(x?.name)===normalize(target)) ||
-        items.find(x=>normalize(x?.product_name)===normalize(target));
+        items.find(x=>normalize(x?.product_name)===normalize(target)) ||
+        items.find(x=>normalize(x?.title)===normalize(target));
       const id=item?.id ?? item?.product_id ?? item?.productId ?? item?.sku;
       return /^\d{4,6}$/.test(String(id??'')) ? String(id) : null;
     }catch(_){
@@ -2373,6 +2371,9 @@ async function confirmarCompraVisual(){
 
     try{
         const providerProductId=await resolverProductoProviderId(p.producto);
+        if(!providerProductId){
+            throw new Error('Este producto todavía no tiene configurado su product_id de SixoFire. Configúralo en lyv_store_products antes de venderlo.');
+        }
         const respuesta=await llamarCleverEndpoint({
             action:'shop_order',
             uid:String(p.idFreeFire),
@@ -2687,11 +2688,19 @@ function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesV
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
 function buscarGlobalAdmin(q){const c=document.getElementById('adminResultadosGlobal');if(!c)return;q=q.trim().toLowerCase();if(!q){c.innerHTML='';return;}const arr=(window.lyvAllOrders||[]).filter(o=>[o.id,o.ffid,o.email,o.usuario,o.producto].some(v=>String(v||'').toLowerCase().includes(q)));c.innerHTML=arr.length?arr.map(o=>`<div class="admin-row" style="margin-top:7px"><div><b>${escapeHtml(o.id)}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(o.email||o.usuario||'')} • ${escapeHtml(o.ffid||'')}</div></div><button class="btn-action" style="width:auto;padding:7px 10px" onclick="verPedido('${o.id}')">Ver</button></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Sin coincidencias.</div>';}
 
-function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
+function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div><div style="font-size:.65rem;color:var(--text-muted)">SixoFire: ${escapeHtml(p.provider_product_id||'Sin configurar')}</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=activo;renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${activo?'Disponible':'No disponible'}`);}
 function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
-function seleccionarProd(el,nombre,precio,id){document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');productoElegido={id:Number(id),nombre,precio};cantidadProductoElegido=1;}
+function seleccionarProd(el,nombre,precio,id){
+    document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+    const original=productos.find(p=>Number(p.id)===Number(id));
+    productoElegido=original
+      ? {...original, id:Number(original.id), nombre:original.nombre, precio:Number(original.mxn), mxn:Number(original.mxn)}
+      : {id:Number(id),nombre,precio:Number(precio),mxn:Number(precio)};
+    cantidadProductoElegido=1;
+}
 async function validarId(){
     const input = document.getElementById('playerId');
     const regionEl = document.getElementById('regionFreeFire');
