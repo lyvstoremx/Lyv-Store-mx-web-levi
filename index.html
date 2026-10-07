@@ -13,7 +13,7 @@
       const lyvSupabase = window.supabase.createClient(LYV_SUPABASE_URL, LYV_SUPABASE_PUBLISHABLE_KEY);
 
       // Conexión segura del frontend con la Edge Function.
-      // No contiene la API de proveedor ni claves privadas.
+      // No contiene la API de SixoFire ni claves privadas.
       async function llamarCleverEndpoint(payload) {
         const { data: { session }, error: sessionError } = await lyvSupabase.auth.getSession();
 
@@ -958,9 +958,17 @@
                 <div style="display:grid;gap:7px;font-size:.74rem;">
                     <div class="admin-row"><span>Mercado Pago</span><span style="color:#6ee7a0">Preparado para backend/webhook</span></div>
                     <div class="admin-row"><span>Binance</span><span style="color:#6ee7a0">Preparado para confirmación real</span></div>
-                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">Proveedor conectado por backend</span></div>
+                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">Conectado por backend</span></div>
                     <div class="admin-row"><span>Comprobantes OXXO</span><span style="color:#ffc107">Revisión manual</span></div>
                 </div>
+            </div>
+
+            <!-- PRUEBA TEMPORAL DE CONEXIÓN CON EDGE FUNCTION -->
+            <div class="card" id="cleverTestCard" style="display:none">
+                <div class="card-title" style="color:var(--accent-blue);">🔐 Prueba de conexión segura</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Esta prueba solo verifica que tu sesión puede llegar al backend. No crea compras, no descuenta saldo y no llama a SixoFire.</p>
+                <button class="btn-action" type="button" onclick="probarConexionClever()">Probar conexión</button>
+                <div id="cleverTestResultado" style="margin-top:10px;font-size:.75rem;"></div>
             </div>
 
             <!-- ACTIVIDAD DEL ADMIN -->
@@ -1022,7 +1030,8 @@
 
             <div class="card">
                 <div class="card-title" data-i18n="productosActualesTitle">Productos Actuales en Tienda</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45">Administra los productos, precios, imágenes y disponibilidad de la tienda.</p>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45">La tienda comprueba automáticamente la disponibilidad de cada producto antes de venderlo.</p>
+                <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;margin-bottom:12px" onclick="sincronizarCatalogoSixoFire()">🔄 Actualizar catálogo</button>
                 <div id="adminProductList" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
 
@@ -1049,6 +1058,30 @@
                 <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Consulta usuarios directamente desde Supabase. El bloqueo se aplica sobre el perfil real cuando las políticas RLS lo permiten.</p>
                 <input id="adminBusquedaUsuario" type="search" placeholder="Buscar por correo, @usuario o nombre" oninput="renderAdminUsuarios(this.value)">
                 <div id="adminUsuariosList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
+            </div>
+
+            <!-- DETALLE Y ESTADOS DEL PROVEEDOR -->
+            <div class="card" style="display:none">
+                <div class="card-title" style="color:var(--accent-blue);">🔌 Conexión de productos Free Fire</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Panel de control de la conexión de productos. Las claves privadas nunca se muestran en la tienda.</p>
+                <div class="admin-row"><span>Estado de conexión</span><b id="adminProveedorEstado" style="color:#6ee7a0">Conectado</b></div>
+                <div class="admin-row"><span>Última sincronización</span><span id="adminProveedorSync">Nunca</span></div>
+                <div class="admin-row"><span>Órdenes pendientes</span><span id="adminProveedorPendientes">0</span></div>
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    <button class="btn-action" type="button" onclick="probarConexionClever('adminProveedorPruebaResultado')">Comprobar conexión</button>
+                    <button class="btn-action" type="button" onclick="consultarCatalogoClever('adminProveedorCatalogoResultado')">Actualizar catálogo</button>
+                    <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="sincronizarProveedorAdminVisual()">Actualizar estados</button>
+                </div>
+                <div id="adminProveedorPruebaResultado" style="font-size:.72rem;margin-top:9px;"></div>
+                <div id="adminProveedorCatalogoResultado" style="font-size:.72rem;margin-top:9px;"></div>
+                <div id="sixoFireRealTestBox" style="display:none;margin-top:12px;padding:12px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05);">
+                    <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
+                    <button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">🧪 Crear orden real de $0.03 USD</button>
+                    <div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
+                </div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La conexión de productos se administra de forma segura desde el backend.</div>
             </div>
 
             <!-- CENTRO DE INCIDENCIAS -->
@@ -1703,8 +1736,8 @@ async function cargarSaldoReal(){
         let totalOrdenesCount = 0;
         let productoElegido = null;
         let cantidadProductoElegido = 1;
-        let limitesProductoproveedor = {isStackable:true,minStack:1,maxStack:99};
-        let catalogoproveedorCache = null;
+        let limitesProductoSixoFire = {isStackable:true,minStack:1,maxStack:99};
+        let catalogoSixoFireCache = null;
         let usuarioActual = null;
         let correoUsuario = "";
         let idFreeFire = "";
@@ -2199,7 +2232,7 @@ function guardarConfiguracionAdmin(){
     </script>
 <script>
 // =========================================================
-// LYV STORE - CAPA FINAL / proveedor + Supabase
+// LYV STORE - CAPA FINAL / SixoFire + Supabase
 // Preparada para conectar backend, pagos y proveedor en Fase 2.
 // =========================================================
 const lyvLogs = [];
@@ -2224,9 +2257,9 @@ function mostrarRecuperacion(){
 async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
 function obtenerLimiteCantidadProducto(){
-    const min=Math.max(1,Number(limitesProductoproveedor?.minStack)||1);
-    const max=Math.max(min,Math.min(99,Number(limitesProductoproveedor?.maxStack)||99));
-    return {min,max,stackable:limitesProductoproveedor?.isStackable!==false};
+    const min=Math.max(1,Number(limitesProductoSixoFire?.minStack)||1);
+    const max=Math.max(min,Math.min(99,Number(limitesProductoSixoFire?.maxStack)||99));
+    return {min,max,stackable:limitesProductoSixoFire?.isStackable!==false};
 }
 function actualizarCantidadCompra(delta){
     const input=document.getElementById('lyvCantidadCompra');
@@ -2250,17 +2283,15 @@ function actualizarResumenCantidadCompra(){
     if(saldoEl) saldoEl.textContent='Saldo después de la compra: $'+(saldoActual-total).toFixed(2)+' MXN';
 }
 async function prepararLimitesCantidadProducto(){
-    limitesProductoproveedor={isStackable:true,minStack:1,maxStack:99};
+    limitesProductoSixoFire={isStackable:true,minStack:1,maxStack:99};
     try{
-      const data=await llamarCleverEndpoint({action:'catalog'});
-      const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
-      const nombre=String(productoElegido?.nombre||'').trim().toLowerCase();
-      const item=items.find(x=>String(x?.name||'').trim().toLowerCase()===nombre);
-      if(item){
-        limitesProductoproveedor={
-          isStackable:item.isStackable!==false,
-          minStack:Number(item.minStack)||1,
-          maxStack:Number(item.maxStack)||99
+      const data=await llamarCleverEndpoint({action:'resolve_product',store_product_id:Number(productoElegido?.id)});
+      const lim=data?.product?.limits;
+      if(data?.ok && lim){
+        limitesProductoSixoFire={
+          isStackable:lim.isStackable!==false,
+          minStack:Number(lim.minStack)||1,
+          maxStack:Number(lim.maxStack)||99
         };
       }
     }catch(_){}
@@ -2274,7 +2305,7 @@ async function mostrarConfirmacionCompra(){
     const lim=obtenerLimiteCantidadProducto();
     const precio=Number(productoElegido.precio ?? productoElegido.mxn ?? 0);
     const total=precio*cantidadProductoElegido;
-    const cantidadNota=lim.stackable?('Permitido por proveedor: '+lim.min+'–'+lim.max+' unidades.'):('Este producto no es apilable; solo se permite 1 unidad.');
+    const cantidadNota=lim.stackable?('Cantidad permitida: '+lim.min+'–'+lim.max+' unidades.'):('Este producto se entrega de 1 en 1.');
     abrirModal(`<div class="card-title" style="color:var(--accent-blue)">🛒 Confirmar compra</div>
       <div class="order-item">
         <div><strong>${escapeHtml(productoElegido.nombre)}</strong></div>
@@ -2289,10 +2320,27 @@ async function mostrarConfirmacionCompra(){
         <div id="lyvTotalCompra" style="font-size:1.15rem;color:var(--accent-blue);font-weight:900">$${total.toFixed(2)} MXN</div>
         <div id="lyvSaldoDespuesCompra" style="font-size:.75rem;color:var(--text-muted)">Saldo después de la compra: $${(saldoActual-total).toFixed(2)} MXN</div>
       </div>
-      <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">${escapeHtml(cantidadNota)} La validación se toma del catálogo real de proveedor.</div>
+      <div id="lyvAvisoCantidadCompra" style="font-size:.7rem;color:var(--text-muted);line-height:1.4;margin-top:7px">${escapeHtml(cantidadNota)} La disponibilidad se comprueba automáticamente antes de procesar la compra.</div>
       <div class="modal-actions"><button class="btn-action" onclick="confirmarCompraVisual()">Confirmar compra</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
-async function resolverProductoProviderId(producto){ return null; }
+async function resolverProductoProviderId(producto){
+    const explicit=producto?.sixofire_product_id ?? producto?.product_id ?? producto?.provider_product_id;
+    if(explicit && /^\d{4,6}$/.test(String(explicit))) return String(explicit);
+
+    try{
+      const data=await llamarCleverEndpoint({action:'catalog'});
+      const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
+      const target=String(producto?.nombre||'').trim().toLowerCase();
+      const normalize=v=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
+      const item=items.find(x=>normalize(x?.name)===normalize(target)) ||
+        items.find(x=>normalize(x?.product_name)===normalize(target)) ||
+        items.find(x=>normalize(x?.title)===normalize(target));
+      const id=item?.id ?? item?.product_id ?? item?.productId ?? item?.sku;
+      return /^\d{4,6}$/.test(String(id??'')) ? String(id) : null;
+    }catch(_){
+      return null;
+    }
+}
 
 async function confirmarCompraVisual(){
     if(!lyvPendingPurchase){
@@ -2308,7 +2356,7 @@ async function confirmarCompraVisual(){
 
     const lim=obtenerLimiteCantidadProducto();
     if(p.cantidad<lim.min || p.cantidad>lim.max){
-        alert('La cantidad está fuera del límite real del producto en proveedor.');
+        alert('La cantidad no está disponible para este producto.');
         return;
     }
 
@@ -2319,26 +2367,23 @@ async function confirmarCompraVisual(){
     }
 
     const btn=document.querySelector('#lyvModalBox .modal-actions .btn-action');
-    if(btn){btn.disabled=true;btn.textContent='Enviando pedido...';}
+    if(btn){btn.disabled=true;btn.textContent='Procesando compra...';}
 
     try{
-        // El backend es la autoridad: si el frontend todavía no conoce el ID,
-        // proveedor lo resuelve desde su catálogo real antes de crear la orden.
-        const providerProductId=await resolverProductoProviderId(p.producto);
+        // El backend resuelve el producto real; el navegador nunca decide el ID del proveedor.
         const respuesta=await llamarCleverEndpoint({
             action:'shop_order',
             uid:String(p.idFreeFire),
-            product_id:providerProductId ? String(providerProductId) : null,
             store_product_id:Number(p.producto.id),
             quantity:Number(p.cantidad),
             local_order_id:generarIdOrdenUnico()
         });
 
         if(!respuesta?.ok){
-            throw new Error(respuesta?.message||'No se pudo crear el pedido.');
+            throw new Error(respuesta?.message||'No se pudo crear la orden.');
         }
 
-        const idOrden=String(respuesta.local_order_id || generarIdOrdenUnico());
+        const idOrden=respuesta.provider_order_id ? ('ORD-'+String(respuesta.provider_order_id)) : generarIdOrdenUnico();
         const providerId=respuesta.provider_order_id||null;
         saldoActual=Number(respuesta.balance_mxn ?? Math.max(0,saldoActual-p.total));
         gastoTotal+=p.total;
@@ -2358,7 +2403,7 @@ async function confirmarCompraVisual(){
             estado:'ORDEN ENVIADA',
             estadoProveedor:respuesta.status||null,
             providerOrderId:providerId,
-            providerProductId:String(respuesta.product_id||providerProductId||''),
+            providerProductId:String(respuesta.product_id||''),
             fecha:new Date().toLocaleString(),
             timestamp:Date.now(),
             tipo:'compra'
@@ -2381,20 +2426,20 @@ async function confirmarCompraVisual(){
         abrirModal(`
           <div style="text-align:center">
             <div style="font-size:2.8rem">✅</div>
-            <h3 style="margin:8px 0">¡Orden enviada!</h3>
+            <h3 style="margin:8px 0">¡Compra enviada correctamente!</h3>
             <p style="font-size:.8rem;color:var(--text-muted)">
-              La tienda recibió la confirmación del pedido.
+              La tienda recibió la respuesta real del proveedor.
             </p>
             <div class="order-item" style="text-align:left;margin-top:12px">
               <b>Pedido Lyv:</b> ${escapeHtml(idOrden)}<br>
               <b>ID de orden:</b> ${escapeHtml(providerId||'No devuelto')}<br>
               <b>Producto:</b> ${escapeHtml(p.producto.nombre)}<br>
-              
+              <b>Producto:</b> ${escapeHtml(String(p.producto.nombre))}<br>
               <b>Cantidad:</b> ${p.cantidad}<br>
               <b>ID Free Fire:</b> ${escapeHtml(p.idFreeFire)}<br>
               <b>Estado:</b> <span style="color:#ffc107">${escapeHtml(respuesta.status||'Creada')}</span>
             </div>
-            <p style="font-size:.7rem;color:#6ee7a0;margin-top:9px">✓ El saldo fue descontado por el backend después de aceptar la orden de proveedor.</p>
+            <p style="font-size:.7rem;color:#6ee7a0;margin-top:9px">✓ El saldo fue descontado después de confirmar la entrega de la orden.</p>
             <div class="modal-actions">
               <button class="btn-action" onclick="cerrarModal();verPedido('${idOrden}')">Ver pedido</button>
               <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal();cambiarVista('historial')">Mis pedidos</button>
@@ -2402,7 +2447,7 @@ async function confirmarCompraVisual(){
           </div>
         `);
     }catch(e){
-        console.error('Error creando orden proveedor:',e);
+        console.error('Error creando orden:',e);
         abrirModal(`
           <div style="text-align:center">
             <div style="font-size:2.5rem">❌</div>
@@ -2438,7 +2483,7 @@ async function cargarOrdenesReales(){
         .limit(100);
       if(error) throw error;
       historialOrdenes=(data||[]).map(o=>({
-        id:o.local_order_id || String(o.id),
+        id:o.local_order_id || (o.provider_order_id ? 'ORD-'+o.provider_order_id : String(o.id)),
         usuario:usuarioActual,
         email:correoUsuario,
         ffid:o.uid,
@@ -2639,7 +2684,29 @@ function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesV
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
 function buscarGlobalAdmin(q){const c=document.getElementById('adminResultadosGlobal');if(!c)return;q=q.trim().toLowerCase();if(!q){c.innerHTML='';return;}const arr=(window.lyvAllOrders||[]).filter(o=>[o.id,o.ffid,o.email,o.usuario,o.producto].some(v=>String(v||'').toLowerCase().includes(q)));c.innerHTML=arr.length?arr.map(o=>`<div class="admin-row" style="margin-top:7px"><div><b>${escapeHtml(o.id)}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(o.email||o.usuario||'')} • ${escapeHtml(o.ffid||'')}</div></div><button class="btn-action" style="width:auto;padding:7px 10px" onclick="verPedido('${o.id}')">Ver</button></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Sin coincidencias.</div>';}
 
-function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
+async function sincronizarCatalogoSixoFire(){
+    const btn=document.querySelector('button[onclick="sincronizarCatalogoSixoFire()"]');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Actualizando catálogo...';}
+    try{
+        const data=await llamarCleverEndpoint({action:'sync_catalog'});
+        if(!data?.ok) throw new Error(data?.message||'No se pudo sincronizar el catálogo.');
+        const rows=Array.isArray(data.products)?data.products:[];
+        rows.forEach(row=>{
+            const p=productos.find(x=>Number(x.id)===Number(row.store_product_id));
+            if(p && row.provider_product_id) p.provider_product_id=String(row.provider_product_id);
+        });
+        renderizarAdminProductos();
+        lyvLog('PROVEEDOR','Catálogo sincronizado: '+String(data.matched||0)+'/'+String(data.total||rows.length)+' productos encontrados.');
+        const noEncontrados=rows.filter(x=>!x.matched).map(x=>x.name);
+        alert(`✅ Catálogo sincronizado\n\nEncontrados: ${data.matched||0}/${data.total||rows.length}`+(noEncontrados.length?`\n\nSin coincidencia: ${noEncontrados.join(', ')}`:''));
+    }catch(e){
+        alert('❌ '+(e?.message||'No se pudo sincronizar el catálogo.'));
+    }finally{
+        if(btn){btn.disabled=false;btn.textContent='🔄 Actualizar catálogo';}
+    }
+}
+
+function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div><div style="font-size:.65rem;color:var(--text-muted)">Producto conectado: ${escapeHtml(p.provider_product_id||'Automático')}</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=activo;renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${activo?'Disponible':'No disponible'}`);}
 function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
@@ -2673,7 +2740,7 @@ async function validarId(){
     }
 
     if(msg){
-        msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID real con proveedor...</span>';
+        msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID de Free Fire...</span>';
     }
 
     try{
@@ -2691,7 +2758,7 @@ async function validarId(){
         const nickname = String(account.nickname || '').trim();
         const detectedRegion = String(account.region || region).trim().toUpperCase();
 
-        // proveedor puede confirmar la cuenta aunque Garena no devuelva nickname.
+        // La verificación puede confirmar la cuenta aunque no se muestre el apodo.
         // La validación debe basarse en status=true/ACCOUNT_INFO_OK, no en que exista nombre.
         idFreeFire = inputId;
         window.lyvFreeFireName = nickname;
@@ -2703,12 +2770,12 @@ async function validarId(){
         if(msg){
             msg.innerHTML = nickname
                 ? '<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>' + escapeHtml(nickname) + '</b> · Región ' + escapeHtml(detectedRegion) + '</span>'
-                : '<span style="color:#45e08a">✓ Cuenta confirmada por proveedor · UID ' + escapeHtml(inputId) + ' · Región ' + escapeHtml(detectedRegion) + '</span>';
+                : '<span style="color:#45e08a">✓ Cuenta confirmada · UID ' + escapeHtml(inputId) + ' · Región ' + escapeHtml(detectedRegion) + '</span>';
         }
 
         lyvLog(
             'ID FREE FIRE',
-            `ID ${inputId} verificado por proveedor · ${nickname} · ${detectedRegion}`
+            `ID ${inputId} verificado · ${nickname} · ${detectedRegion}`
         );
 
     }catch(e){
@@ -2789,12 +2856,82 @@ function renderAdminProveedor(){
     const a=document.getElementById('adminProveedorEstado'),b=document.getElementById('adminProveedorSync'),d=document.getElementById('adminProveedorPendientes');
     if(a){a.textContent=st;a.style.color=st==='Conectado'?'#6ee7a0':'#ffc107';} if(b)b.textContent=sync;if(d)d.textContent=pendientes;
 }
+function marcarPruebaProveedorAdmin(){localStorage.setItem('lyv_provider_status','Prueba local');localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());renderAdminProveedor();lyvLog('PROVEEDOR','Prueba local registrada; no se llamó a una API real.');alert('Prueba local registrada. La conexión real se hará desde el backend.');}
+async function sincronizarProveedorAdminVisual(){
+    const syncBox=document.getElementById('adminProveedorSync');
+    if(syncBox) syncBox.textContent='Consultando SixoFire...';
+    try{
+      let providerId=String(localStorage.getItem('lyv_last_provider_order_id')||'').trim();
+      // Recuperación de la orden REAL ya creada durante esta prueba.
+      // Solo se usa si Safari/localStorage no conservó el ID.
+      if(!/^\d+$/.test(providerId)){ throw new Error('Todavía no hay un provider_order_id real guardado.'); }
+      const data=await llamarCleverEndpoint({action:'shop_order_status',provider_order_id:providerId});
+      if(data?.code!=='SHOP_ORDER_STATUS_OK') throw new Error(data?.message||data?.code||'SixoFire no devolvió el estado.');
+      const status=String(data?.status||'UNKNOWN');
+      localStorage.setItem('lyv_provider_status',status);
+      localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+      renderAdminProveedor();
+      const box=document.getElementById('adminProveedorPruebaResultado');
+      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Estado real consultado.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(providerId)+'</b> · Estado: <b>'+escapeHtml(status)+'</b></span>';
+      lyvLog('SIXOFIRE SHOP_ORDER_STATUS','Estado consultado · provider_order_id '+providerId+' · '+status);
+    }catch(e){
+      localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+      renderAdminProveedor();
+      const box=document.getElementById('adminProveedorPruebaResultado');
+      if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(String(e?.message||e||'Error al consultar el proveedor.'))+'</span>';
+      lyvLog('PROVEEDOR ERROR','Sincronización real: '+String(e?.message||e||'error'));
+    }
+}
 
+async function probarConexionClever(resultadoId='cleverTestResultado'){
+  const box=document.getElementById(resultadoId)||document.getElementById('cleverTestResultado');
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Verificando sesión con el backend...</span>';
+  try{
+    const data=await llamarCleverEndpoint({action:'test'});
+    if(data?.code==='AUTHENTICATED'){
+      if(box) box.innerHTML='<span style="color:#6ee7a0">✓ Conexión real correcta. Tu sesión fue autenticada por el backend.</span>';
+      return;
+    }
+    if(box) box.innerHTML='<span style="color:#ffc107">✓ El backend respondió: '+escapeHtml(data?.code||'OK')+'</span>';
+  }catch(e){
+    const msg=String(e?.message||e||'');
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+  }
+}
 
+async function probarOrdenRealSixoFire(){
+  const btn=document.getElementById('btnPruebaOrdenSixoFire');
+  const box=document.getElementById('adminPruebaOrdenResultado');
+  const uid='14608057611';
+  const productId='17729';
+  const confirmado=window.confirm('Esta acción CREARÁ UNA ORDEN REAL en SixoFire por $0.03 USD para el UID '+uid+'.\n\n¿Quieres continuar?');
+  if(!confirmado) return;
+  if(btn){btn.disabled=true;btn.innerText='Creando orden real...';}
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Enviando una sola orden real a SixoFire...</span>';
+  try{
+    const data=await llamarCleverEndpoint({action:'shop_order',uid,product_id:productId,store_product_id:8,quantity:1,local_order_id:'ADMIN-TEST-'+Date.now()});
+    if(!data?.ok || data?.code!=='SHOP_ORDER_CREATED_AND_CHARGED'){
+      throw new Error(data?.message||data?.code||'SixoFire no confirmó la creación de la orden.');
+    }
+    const providerId=data?.provider_order_id ?? 'No informado';
+    const status=data?.status ?? 'No informado';
+    localStorage.setItem('lyv_last_provider_order_id',String(providerId));
+    localStorage.setItem('lyv_provider_status',String(status));
+    localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
+    if(box) box.innerHTML='<span style="color:#6ee7a0">✓ ORDEN REAL CREADA.</span><br><span style="color:var(--text-muted)">ID proveedor: <b>'+escapeHtml(String(providerId))+'</b> · Estado: <b>'+escapeHtml(String(status))+'</b></span>';
+    renderAdminProveedor();
+    lyvLog('SIXOFIRE SHOP_ORDER','Orden real creada · UID '+uid+' · producto '+productId+' · provider_order_id '+providerId);
+    if(btn){btn.innerText='Orden creada ✓';btn.disabled=true;}
+  }catch(e){
+    const msg=String(e?.message||e||'Error desconocido');
+    if(box) box.innerHTML='<span style="color:#ff7b7b">✗ '+escapeHtml(msg)+'</span>';
+    if(btn){btn.disabled=false;btn.innerText='Reintentar orden real';}
+  }
+}
 
 async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResultado'){
   const box=document.getElementById(resultadoId);
-  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Consultando catálogo real de proveedor...</span>';
+  if(box) box.innerHTML='<span style="color:#ffc107">⏳ Consultando catálogo real de SixoFire...</span>';
   try{
     const data=await llamarCleverEndpoint({action:'catalog'});
     const items=Array.isArray(data?.catalog?.items)?data.catalog.items:[];
@@ -2813,7 +2950,7 @@ async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResult
           const price=x.effectivePriceUsd ?? x.priceUsd ?? null;
           const priceText=price==null?'Precio no disponible':'$'+Number(price).toFixed(2)+' USD';
           const type=escapeHtml(String(x.itemType??''));
-          return '<div class="admin-row" style="align-items:flex-start"><div><b>'+name+'</b><div style="font-size:.68rem;color:var(--text-muted)">ID de orden: '+id+' · '+type+'</div></div><span style="font-size:.7rem;color:#fff">'+priceText+'</span></div>';
+          return '<div class="admin-row" style="align-items:flex-start"><div><b>'+name+'</b><div style="font-size:.68rem;color:var(--text-muted)">ID proveedor: '+id+' · '+type+'</div></div><span style="font-size:.7rem;color:#fff">'+priceText+'</span></div>';
         }).join('')+'</div>'+
         '</div>';
     }
