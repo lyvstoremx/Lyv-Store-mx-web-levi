@@ -1735,7 +1735,31 @@ async function cargarSaldoReal(){
         let colaboradores = [];
         let customLogoHtml = '<svg class="logo-svg" viewBox="0 0 24 24"><use href="#blue-diamond-icon"/></svg>';
 
-        let productos = [
+        const LYV_PRODUCT_IMAGES_KEY = 'lyv_product_images_v1';
+
+function cargarImagenesProductosGuardadas(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LYV_PRODUCT_IMAGES_KEY) || '{}');
+    if(!saved || typeof saved !== 'object') return;
+    productos.forEach(p=>{
+      if(saved[p.id]) p.icon = saved[p.id];
+    });
+  }catch(e){ console.warn('No se pudieron cargar imágenes guardadas:',e); }
+}
+
+function guardarImagenProductoLocal(id, value){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LYV_PRODUCT_IMAGES_KEY) || '{}');
+    saved[id] = value;
+    localStorage.setItem(LYV_PRODUCT_IMAGES_KEY, JSON.stringify(saved));
+    return true;
+  }catch(e){
+    console.error('No se pudo guardar la imagen:',e);
+    return false;
+  }
+}
+
+let productos = [
             { id: 1, nombre: '110 Diamantes', mxn: 17.00, usd: 1.00, icon: '💎' },
             { id: 2, nombre: '341 Diamantes', mxn: 55.00, usd: 3.25, icon: '💎' },
             { id: 3, nombre: '572 Diamantes', mxn: 85.00, usd: 5.00, icon: '💎' },
@@ -1746,6 +1770,8 @@ async function cargarSaldoReal(){
             { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩' },
             { id: 9, nombre: 'Caja de Fragmentos', mxn: 3.5, usd: 0.19, icon: '📦' }
         ];
+
+cargarImagenesProductosGuardadas();
 
         // Inicializar contenedor de pagos y catálogo al cargar la página
         window.onload = function() {
@@ -2029,7 +2055,43 @@ async function cargarSaldoReal(){
             alert('¡Logo actualizado con éxito en toda la página!');
         }
 
-        function actualizarIconoProducto(id) {
+        function cargarImagenProductoExistente(id, input){
+  const file = input?.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('Selecciona una imagen válida.');
+    input.value='';
+    return;
+  }
+  if(file.size > 2 * 1024 * 1024){
+    alert('La imagen debe pesar máximo 2 MB.');
+    input.value='';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const value = String(e.target.result || '');
+    const prod = productos.find(p=>String(p.id)===String(id));
+    if(!prod) return;
+
+    prod.icon = value;
+    const textInput = document.getElementById('input-img-'+id);
+    if(textInput) textInput.value = value;
+
+    if(!guardarImagenProductoLocal(id,value)){
+      alert('No se pudo guardar la imagen en este dispositivo.');
+      return;
+    }
+
+    renderizarAdminProductos();
+    renderizarTienda();
+    alert('Imagen del producto guardada correctamente.');
+  };
+  reader.readAsDataURL(file);
+}
+
+function actualizarIconoProducto(id) {
             let inputVal = document.getElementById(`input-img-${id}`).value.trim();
             if(!inputVal) { alert('Ingresa un icono o URL válido'); return; }
 
