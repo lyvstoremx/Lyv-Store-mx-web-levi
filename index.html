@@ -2654,7 +2654,7 @@ function renderizarHistorialRecargasSafe(){
 function generarIdRecargaUnico(){let id;do{id='TX-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllTopups||[]).some(r=>r.id===id)||historialOrdenes.some(r=>r.id===id));return id;}
 function confirmarRecargaVisual(){const p=lyvPendingRecharge;if(!p)return;const id=generarIdRecargaUnico();const rec={id,montoUsd:p.montoUsd||p.monto,montoMxn:p.montoMxn||obtenerTotalMxn(p.montoUsd||p.monto),monedaBase:'USD',metodo:p.metodo,referenciaBinance:p.referenciaBinance||null,estado:p.metodo==='oxxo'?'PENDIENTE DE REVISIÓN':'PENDIENTE DE CONFIRMACIÓN',fecha:new Date().toLocaleString(),tipo:'recarga'};window.lyvAllTopups=window.lyvAllTopups||[];window.lyvAllTopups.unshift(rec);historialOrdenes.unshift(rec);if(typeof recargasRegistradas!=='undefined')recargasRegistradas.unshift(rec);lyvLog('RECARGA',`${id} por $${Number(rec.montoUsd).toFixed(2)} USD vía ${METODOS_PAGO[p.metodo].nombre}`);renderizarHistorialRecargasSafe();renderizarHistorial();lyvPendingRecharge=null;abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">⏳</div><h3>Solicitud registrada</h3><p style="font-size:.8rem;color:var(--text-muted);margin:10px 0">Referencia: <b>${id}</b><br>Estado: Pendiente de confirmación</p><button class="btn-action" onclick="cerrarModal();cambiarVista('historial')">Ver historial</button></div>`);}
 
-async async function guardarPerfilVisual(){
+async function guardarPerfilVisual(){
     if(!usuarioActual){alert('Inicia sesión para editar tu perfil.');return;}
     const u=(document.getElementById('perfilUsuario')?.value||'').trim();
     const n=(document.getElementById('perfilNombre')?.value||'').trim();
@@ -2858,7 +2858,7 @@ function seleccionarProd(el,nombre,precio,id){
       : {id:Number(id),nombre,precio:Number(precio),mxn:Number(precio)};
     cantidadProductoElegido=1;
 }
-async async function validarId(){
+async function validarId(){
     const input = document.getElementById('playerId');
     const regionTexto = document.getElementById('regionFreeFireTexto');
     const msg = document.getElementById('lyvPlayerVerification');
