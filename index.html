@@ -653,25 +653,7 @@
                     <input type="text" id="playerId" placeholder="Ej. 14608057611" inputmode="numeric" autocomplete="off" style="margin-bottom:0; background: rgba(0,0,0,0.8); flex:1; min-width:0;">
                     <button id="btnVerificarId" class="btn-action" style="width: 52px; padding:0; background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="validarId()">✓</button>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                    <label for="regionFreeFire" style="font-size:.7rem; color:var(--text-muted); white-space:nowrap;">Región</label>
-                    <select id="regionFreeFire" style="margin:0; flex:1; min-width:0; background:rgba(0,0,0,.8); color:#fff; border:1px solid rgba(255,91,99,.35); border-radius:10px; padding:9px 10px;">
-                        <option value="US">US</option>
-                        <option value="SAC">SAC</option>
-                        <option value="BR">BR</option>
-                        <option value="NA">NA</option>
-                        <option value="IND">IND</option>
-                        <option value="CIS">CIS</option>
-                        <option value="ID">ID</option>
-                        <option value="PK">PK</option>
-                        <option value="ME">ME</option>
-                        <option value="RU">RU</option>
-                        <option value="SG">SG</option>
-                        <option value="TH">TH</option>
-                        <option value="TW">TW</option>
-                        <option value="VN">VN</option>
-                    </select>
-                </div>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;"><span style="font-size:.7rem;color:var(--text-muted);white-space:nowrap;">Región</span><div id="regionFreeFireAuto" style="flex:1;background:rgba(0,0,0,.8);color:#fff;border:1px solid rgba(255,91,99,.35);border-radius:10px;padding:9px 10px;">🌎 <span id="regionFreeFireTexto">Detectar automáticamente</span></div></div>
                 <div id="lyvPlayerVerification" style="font-size:.75rem; margin-top:7px; line-height:1.35; color:var(--text-muted);">
                     Selecciona la región del servidor y verifica el ID con la API oficial.
                 </div>
@@ -2793,14 +2775,13 @@ function seleccionarProd(el,nombre,precio,id){
       : {id:Number(id),nombre,precio:Number(precio),mxn:Number(precio)};
     cantidadProductoElegido=1;
 }
-async function validarId(){
+async async function validarId(){
     const input = document.getElementById('playerId');
-    const regionEl = document.getElementById('regionFreeFire');
+    const regionTexto = document.getElementById('regionFreeFireTexto');
     const msg = document.getElementById('lyvPlayerVerification');
     const btn = document.getElementById('btnVerificarId');
 
     const inputId = String(input?.value || '').trim();
-    const region = String(regionEl?.value || 'US').trim().toUpperCase();
 
     if(!/^\d{8,12}$/.test(inputId)){
         if(msg) msg.innerHTML = '<span style="color:#ff8b8b">✗ El ID debe tener entre 8 y 12 dígitos.</span>';
@@ -2813,33 +2794,47 @@ async function validarId(){
         btn.innerText = '…';
     }
 
-    if(msg){
-        msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID de Free Fire...</span>';
-    }
+    if(regionTexto) regionTexto.textContent = 'Detectando…';
+    if(msg) msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID de Free Fire y detectando región...</span>';
 
     try{
-        const data = await llamarCleverEndpoint({
-            action: 'account_info',
-            uid: inputId,
-            region
-        });
+        // Para usuarios de México probamos primero SAC y después US.
+        // No se toca la compra, el saldo ni la creación de órdenes.
+        const regionesAuto = ['SAC','US'];
+        let data = null;
+        let detectedRegion = '';
 
-        if(data?.code !== 'ACCOUNT_INFO_OK'){
-            throw new Error(data?.message || data?.code || 'No se pudo verificar el jugador.');
+        for(const region of regionesAuto){
+            try{
+                const r = await llamarCleverEndpoint({
+                    action: 'account_info',
+                    uid: inputId,
+                    region
+                });
+
+                if(r?.code === 'ACCOUNT_INFO_OK'){
+                    data = r;
+                    detectedRegion = String(r?.account?.region || region).trim().toUpperCase();
+                    break;
+                }
+            }catch(err){
+                console.warn('Región no encontrada:', region, err);
+            }
+        }
+
+        if(!data){
+            throw new Error('No se pudo encontrar ese jugador en las regiones disponibles para detección automática.');
         }
 
         const account = data?.account || {};
         const nickname = String(account.nickname || '').trim();
-        const detectedRegion = String(account.region || region).trim().toUpperCase();
 
-        // La verificación puede confirmar la cuenta aunque no se muestre el apodo.
-        // La validación debe basarse en status=true/ACCOUNT_INFO_OK, no en que exista nombre.
         idFreeFire = inputId;
         window.lyvFreeFireName = nickname;
         window.lyvFreeFireRegion = detectedRegion;
 
         if(input) input.value = inputId;
-        if(regionEl) regionEl.value = detectedRegion;
+        if(regionTexto) regionTexto.textContent = detectedRegion;
 
         if(msg){
             msg.innerHTML = nickname
@@ -2856,6 +2851,8 @@ async function validarId(){
         idFreeFire = '';
         window.lyvFreeFireName = '';
         window.lyvFreeFireRegion = '';
+
+        if(regionTexto) regionTexto.textContent = 'No detectada';
 
         const raw = String(e?.message || e || 'No se pudo verificar el jugador.');
 
