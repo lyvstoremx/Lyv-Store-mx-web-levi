@@ -1074,13 +1074,6 @@
                 </div>
                 <div id="adminProveedorPruebaResultado" style="font-size:.72rem;margin-top:9px;"></div>
                 <div id="adminProveedorCatalogoResultado" style="font-size:.72rem;margin-top:9px;"></div>
-                <div id="sixoFireRealTestBox" style="display:none;margin-top:12px;padding:12px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05);">
-                    <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
-                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
-                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
-                    <button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">🧪 Crear orden real de $0.03 USD</button>
-                    <div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
-                </div>
                 <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La conexión de productos se administra de forma segura desde el backend.</div>
             </div>
 
@@ -1754,7 +1747,7 @@ async function cargarSaldoReal(){
             { id: 5, nombre: '2398 Diamantes', mxn: 300.00, usd: 17.65, icon: '💎' },
             { id: 6, nombre: '6160 Diamantes', mxn: 670.00, usd: 39.40, icon: '💎' },
             { id: 7, nombre: 'Pase Booyah', mxn: 45.00, usd: 2.65, icon: '🎟' },
-            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, provider_product_id: '17729', icon: '🧩' },
+            { id: 8, nombre: '1 Fragmento', mxn: 1.25, usd: 0.08, icon: '🧩' },
             { id: 9, nombre: 'Caja de Fragmentos', mxn: 3.5, usd: 0.19, icon: '📦' }
         ];
 
@@ -2257,9 +2250,9 @@ function mostrarRecuperacion(){
 async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
 function obtenerLimiteCantidadProducto(){
-    const min=Math.max(1,Number(limitesProductoSixoFire?.minStack)||1);
-    const max=Math.max(min,Math.min(99,Number(limitesProductoSixoFire?.maxStack)||99));
-    return {min,max,stackable:limitesProductoSixoFire?.isStackable!==false};
+    // Lyv Store controla siempre cantidades de 1 a 99.
+    // Los límites internos del proveedor no se copian al selector de la tienda.
+    return {min:1,max:99,stackable:true};
 }
 function actualizarCantidadCompra(delta){
     const input=document.getElementById('lyvCantidadCompra');
@@ -2283,17 +2276,11 @@ function actualizarResumenCantidadCompra(){
     if(saldoEl) saldoEl.textContent='Saldo después de la compra: $'+(saldoActual-total).toFixed(2)+' MXN';
 }
 async function prepararLimitesCantidadProducto(){
+    // La tienda no depende de minStack/maxStack del proveedor para su UI.
+    // El backend valida la orden real antes de cobrar.
     limitesProductoSixoFire={isStackable:true,minStack:1,maxStack:99};
     try{
-      const data=await llamarCleverEndpoint({action:'resolve_product',store_product_id:Number(productoElegido?.id)});
-      const lim=data?.product?.limits;
-      if(data?.ok && lim){
-        limitesProductoSixoFire={
-          isStackable:lim.isStackable!==false,
-          minStack:Number(lim.minStack)||1,
-          maxStack:Number(lim.maxStack)||99
-        };
-      }
+      await llamarCleverEndpoint({action:'resolve_product',store_product_id:Number(productoElegido?.id)});
     }catch(_){}
 }
 async function mostrarConfirmacionCompra(){
@@ -2900,6 +2887,9 @@ async function probarConexionClever(resultadoId='cleverTestResultado'){
 }
 
 async function probarOrdenRealSixoFire(){
+  alert('La prueba de orden real está desactivada. Las compras se realizan únicamente desde la tienda.');
+  return;
+  /*
   const btn=document.getElementById('btnPruebaOrdenSixoFire');
   const box=document.getElementById('adminPruebaOrdenResultado');
   const uid='14608057611';
@@ -2929,6 +2919,8 @@ async function probarOrdenRealSixoFire(){
   }
 }
 
+  */
+}
 async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResultado'){
   const box=document.getElementById(resultadoId);
   if(box) box.innerHTML='<span style="color:#ffc107">⏳ Consultando catálogo real de SixoFire...</span>';
