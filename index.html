@@ -1915,6 +1915,8 @@ async function cargarSaldoReal(){
         async function manejoBotonSesionDrawer() {
             const t = translations[currentLang];
             if(usuarioActual) {
+                const confirmar = confirm('¿Seguro que quieres cerrar sesión?');
+                if(!confirmar) return;
                 try{await lyvSupabase.auth.signOut();}catch(e){console.warn(e);}
                 usuarioActual = null;
                 correoUsuario = "";
@@ -2456,9 +2458,32 @@ async function confirmarCompraVisual(){
 function generarIdOrdenUnico(){let id;do{id='ORD-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllOrders||[]).some(o=>o.id===id));return id;}
 window.comprarPaqueteReal=mostrarConfirmacionCompra;
 
-function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}${o.cantidad?` · Cantidad: ${o.cantidad}`:''}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(o.estado||'Pendiente')}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado mostrado proviene del registro de la orden y del proveedor. No se marca como entregada hasta recibir confirmación real.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
+function traducirEstadoOrden(estado){
+  const s=String(estado||'').trim().toUpperCase();
+  const mapa={
+    PENDING:'Pendiente',
+    PROCESSING:'Procesando',
+    IN_PROGRESS:'Procesando',
+    COMPLETED:'Entregado',
+    DELIVERED:'Entregado',
+    SUCCESS:'Entregado',
+    SUCCEEDED:'Entregado',
+    CANCELLED:'Cancelado',
+    CANCELED:'Cancelado',
+    FAILED:'Fallido',
+    ERROR:'Fallido',
+    REFUNDED:'Reembolsado',
+    CREATED:'Creada',
+    ACCEPTED:'Aceptada',
+    REJECTED:'Rechazada',
+    UNKNOWN:'Sin informar'
+  };
+  return mapa[s] || (estado ? String(estado) : 'Pendiente');
+}
 
-function renderizarHistorial(){const c=document.getElementById('listaHistorial');if(!c)return;const arr=historialOrdenes.filter(o=>o.tipo!=='recarga');if(!arr.length){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay pedidos registrados.</div>';return;}c.innerHTML=arr.map(o=>`<div class="order-item"><div class="order-header"><span>${escapeHtml(o.producto||o.nombre)}</span><span class="badge-status status-pending">${escapeHtml(o.estado)}</span></div><div style="font-size:.72rem;color:var(--text-muted)">Pedido: ${escapeHtml(o.id)} • ${escapeHtml(o.fecha)}</div><div style="font-size:.72rem;color:var(--text-muted)">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><button class="btn-action" style="padding:8px;margin-top:4px;background:rgba(255,255,255,.04);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="verPedido('${o.id}')">Ver pedido</button></div>`).join('');}
+function verPedido(id){const o=(window.lyvAllOrders||[]).find(x=>x.id===id)||historialOrdenes.find(x=>x.id===id);if(!o){alert('Pedido no encontrado.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">📦 Detalle del pedido</div><div class="order-item"><div><b>${escapeHtml(o.id)}</b></div><div style="font-size:.8rem">Producto: ${escapeHtml(o.producto||o.nombre)}${o.cantidad?` · Cantidad: ${o.cantidad}`:''}</div><div style="font-size:.8rem">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><div style="font-size:.8rem">Precio: $${Number(o.precio||0).toFixed(2)} MXN</div><div style="font-size:.8rem">Creado: ${escapeHtml(o.fecha)}</div><div style="margin-top:8px"><span class="badge-status status-pending">${escapeHtml(traducirEstadoOrden(o.estadoProveedor||o.estado||'PENDING'))}</span></div></div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45">El estado mostrado proviene del registro de la orden y del proveedor. No se marca como entregada hasta recibir confirmación real.</p><button class="btn-action" onclick="cerrarModal()">Cerrar</button>`);}
+
+function renderizarHistorial(){const c=document.getElementById('listaHistorial');if(!c)return;const arr=historialOrdenes.filter(o=>o.tipo!=='recarga');if(!arr.length){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay pedidos registrados.</div>';return;}c.innerHTML=arr.map(o=>`<div class="order-item"><div class="order-header"><span>${escapeHtml(o.producto||o.nombre)}</span><span class="badge-status status-pending">${escapeHtml(traducirEstadoOrden(o.estadoProveedor||o.estado||'PENDING'))}</span></div><div style="font-size:.72rem;color:var(--text-muted)">Pedido: ${escapeHtml(o.id)} • ${escapeHtml(o.fecha)}</div><div style="font-size:.72rem;color:var(--text-muted)">ID Free Fire: ${escapeHtml(o.ffid||'-')}</div><button class="btn-action" style="padding:8px;margin-top:4px;background:rgba(255,255,255,.04);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="verPedido('${o.id}')">Ver pedido</button></div>`).join('');}
 
 async function cargarOrdenesReales(){
     if(!usuarioActual) return;
@@ -2479,7 +2504,7 @@ async function cargarOrdenesReales(){
         precioUnitario:Number(o.unit_price_mxn||0),
         precio:Number(o.total_mxn||0),
         metodoPago:'saldo',
-        estado:o.status || 'CREATED',
+        estado:o.provider_status || o.status || 'CREATED',
         estadoProveedor:o.provider_status || null,
         providerOrderId:o.provider_order_id || null,
         providerProductId:o.provider_product_id || null,
@@ -2512,7 +2537,7 @@ function renderizarHistorialRecargasSafe(){
     const c=document.getElementById('listaHistorialRecargas');
     if(!c)return;
     const arr=historialOrdenes.filter(o=>o.tipo==='recarga');
-    c.innerHTML=arr.length?arr.map(o=>`<div class="order-item"><div class="order-header"><span>Recarga $${Number(o.montoUsd||o.monto||0).toFixed(2)} USD</span><span class="badge-status status-pending">${escapeHtml(o.estado)}</span></div><div style="font-size:.72rem;color:var(--text-muted)">${escapeHtml(o.id)} • ${escapeHtml(o.fecha)} • ${escapeHtml(METODOS_PAGO[o.metodo]?.nombre||o.metodo)}${o.metodo==='binance'?` • ${Number(o.montoUsd||0).toFixed(2)} USDT`:o.montoMxn?` • $${Number(o.montoMxn).toFixed(2)} MXN`:''}${o.referenciaBinance?` • Nota: ${escapeHtml(o.referenciaBinance)}`:''}</div></div>`).join(''):'<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay recargas registradas.</div>';
+    c.innerHTML=arr.length?arr.map(o=>`<div class="order-item"><div class="order-header"><span>Recarga $${Number(o.montoUsd||o.monto||0).toFixed(2)} USD</span><span class="badge-status status-pending">${escapeHtml(traducirEstadoOrden(o.estadoProveedor||o.estado||'PENDING'))}</span></div><div style="font-size:.72rem;color:var(--text-muted)">${escapeHtml(o.id)} • ${escapeHtml(o.fecha)} • ${escapeHtml(METODOS_PAGO[o.metodo]?.nombre||o.metodo)}${o.metodo==='binance'?` • ${Number(o.montoUsd||0).toFixed(2)} USDT`:o.montoMxn?` • $${Number(o.montoMxn).toFixed(2)} MXN`:''}${o.referenciaBinance?` • Nota: ${escapeHtml(o.referenciaBinance)}`:''}</div></div>`).join(''):'<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay recargas registradas.</div>';
 }
 
 function generarIdRecargaUnico(){let id;do{id='TX-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllTopups||[]).some(r=>r.id===id)||historialOrdenes.some(r=>r.id===id));return id;}
