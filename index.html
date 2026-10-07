@@ -1029,7 +1029,9 @@
             </div>
 
             <div class="card">
-                <div class="card-title" data-i18n="productosActualesTitle">Productos Actuales en Tienda (Edita su imagen directamente)</div>
+                <div class="card-title" data-i18n="productosActualesTitle">Productos Actuales en Tienda</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45">Conecta automáticamente cada producto de la tienda con su <b>product_id real de SixoFire</b>. No se inventan IDs.</p>
+                <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;margin-bottom:12px" onclick="sincronizarCatalogoSixoFire()">🔄 Sincronizar catálogo con SixoFire</button>
                 <div id="adminProductList" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
 
@@ -2370,10 +2372,9 @@ async function confirmarCompraVisual(){
     if(btn){btn.disabled=true;btn.textContent='Enviando a SixoFire...';}
 
     try{
+        // El backend es la autoridad: si el frontend todavía no conoce el ID,
+        // SixoFire lo resuelve desde su catálogo real antes de crear la orden.
         const providerProductId=await resolverProductoProviderId(p.producto);
-        if(!providerProductId){
-            throw new Error('Este producto todavía no tiene configurado su product_id de SixoFire. Configúralo en lyv_store_products antes de venderlo.');
-        }
         const respuesta=await llamarCleverEndpoint({
             action:'shop_order',
             uid:String(p.idFreeFire),
@@ -2687,6 +2688,28 @@ async function acreditarCreditoAdminVisual(){
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
 function buscarGlobalAdmin(q){const c=document.getElementById('adminResultadosGlobal');if(!c)return;q=q.trim().toLowerCase();if(!q){c.innerHTML='';return;}const arr=(window.lyvAllOrders||[]).filter(o=>[o.id,o.ffid,o.email,o.usuario,o.producto].some(v=>String(v||'').toLowerCase().includes(q)));c.innerHTML=arr.length?arr.map(o=>`<div class="admin-row" style="margin-top:7px"><div><b>${escapeHtml(o.id)}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(o.email||o.usuario||'')} • ${escapeHtml(o.ffid||'')}</div></div><button class="btn-action" style="width:auto;padding:7px 10px" onclick="verPedido('${o.id}')">Ver</button></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Sin coincidencias.</div>';}
+
+async function sincronizarCatalogoSixoFire(){
+    const btn=document.querySelector('button[onclick="sincronizarCatalogoSixoFire()"]');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Sincronizando con SixoFire...';}
+    try{
+        const data=await llamarCleverEndpoint({action:'sync_catalog'});
+        if(!data?.ok) throw new Error(data?.message||'No se pudo sincronizar el catálogo.');
+        const rows=Array.isArray(data.products)?data.products:[];
+        rows.forEach(row=>{
+            const p=productos.find(x=>Number(x.id)===Number(row.store_product_id));
+            if(p && row.provider_product_id) p.provider_product_id=String(row.provider_product_id);
+        });
+        renderizarAdminProductos();
+        lyvLog('SIXOFIRE','Catálogo sincronizado: '+String(data.matched||0)+'/'+String(data.total||rows.length)+' productos encontrados.');
+        const noEncontrados=rows.filter(x=>!x.matched).map(x=>x.name);
+        alert(`✅ Catálogo sincronizado\n\nEncontrados: ${data.matched||0}/${data.total||rows.length}`+(noEncontrados.length?`\n\nSin coincidencia: ${noEncontrados.join(', ')}`:''));
+    }catch(e){
+        alert('❌ '+(e?.message||'No se pudo sincronizar el catálogo.'));
+    }finally{
+        if(btn){btn.disabled=false;btn.textContent='🔄 Sincronizar catálogo con SixoFire';}
+    }
+}
 
 function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div><div style="font-size:.65rem;color:var(--text-muted)">SixoFire: ${escapeHtml(p.provider_product_id||'Sin configurar')}</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=activo;renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${activo?'Disponible':'No disponible'}`);}
