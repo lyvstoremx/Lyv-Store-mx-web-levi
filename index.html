@@ -2578,6 +2578,15 @@ async function cargarOrdenesReales(){
         tipo:'compra'
       }));
       window.lyvAllOrders=historialOrdenes.slice();
+
+      // Total gastado REAL: suma de las compras guardadas en Supabase.
+      gastoTotal = historialOrdenes
+        .filter(o=>o.tipo==='compra')
+        .reduce((total,o)=>total + Number(o.precio||0), 0);
+
+      totalOrdenesCount = historialOrdenes
+        .filter(o=>o.tipo==='compra').length;
+
       actualizarPanelesUsuario();
       renderizarHistorial();
       renderAdminDashboard();
@@ -2608,7 +2617,7 @@ async function sincronizarEstadosOrdenesReales(){
         action:'shop_order_status',
         provider_order_id:String(o.providerOrderId)
       });
-      if(data?.code!=='SHOP_ORDER_STATUS_OK')throw new Error(data?.message||data?.code||'Estado no disponible');
+      if(!['SHOP_ORDER_STATUS_OK','SHOP_ORDER_STATUS_UPDATED'].includes(data?.code))throw new Error(data?.message||data?.code||'Estado no disponible');
       return {o,status:String(data?.status||'UNKNOWN').toUpperCase()};
     }));
 
@@ -3049,7 +3058,7 @@ async function sincronizarProveedorAdminVisual(){
       // Solo se usa si Safari/localStorage no conservó el ID.
       if(!/^\d+$/.test(providerId)){ throw new Error('Todavía no hay un provider_order_id real guardado.'); }
       const data=await llamarCleverEndpoint({action:'shop_order_status',provider_order_id:providerId});
-      if(data?.code!=='SHOP_ORDER_STATUS_OK') throw new Error(data?.message||data?.code||'SixoFire no devolvió el estado.');
+      if(!['SHOP_ORDER_STATUS_OK','SHOP_ORDER_STATUS_UPDATED'].includes(data?.code)) throw new Error(data?.message||data?.code||'SixoFire no devolvió el estado.');
       const status=String(data?.status||'UNKNOWN');
       localStorage.setItem('lyv_provider_status',status);
       localStorage.setItem('lyv_provider_sync',new Date().toLocaleString());
