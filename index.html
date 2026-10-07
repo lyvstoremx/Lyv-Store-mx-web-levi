@@ -2516,9 +2516,55 @@ async function cargarOrdenesReales(){
       actualizarPanelesUsuario();
       renderizarHistorial();
       renderAdminDashboard();
+
+      // Sincronización REAL del estado con SixoFire.
+      // Solo consultamos pedidos que todavía pueden cambiar de estado.
+      // No toca saldo ni crea/modifica órdenes: únicamente actualiza la vista.
+      sincronizarEstadosOrdenesReales();
     }catch(e){
       console.warn('No se pudo cargar historial real:',e);
     }
+}
+
+async function sincronizarEstadosOrdenesReales(){
+  try{
+    const pendientes=(historialOrdenes||[])
+      .filter(o=>o.tipo==='compra' && o.providerOrderId)
+      .filter(o=>{
+        const s=String(o.estadoProveedor||o.estado||'').toUpperCase();
+        return !['COMPLETED','DELIVERED','SUCCESS','SUCCEEDED','CANCELLED','CANCELED','FAILED','ERROR','REFUNDED'].includes(s);
+      })
+      .slice(0,20);
+
+    if(!pendientes.length)return;
+
+    const resultados=await Promise.allSettled(pendientes.map(async o=>{
+      const data=await llamarCleverEndpoint({
+        action:'shop_order_status',
+        provider_order_id:String(o.providerOrderId)
+      });
+      if(data?.code!=='SHOP_ORDER_STATUS_OK')throw new Error(data?.message||data?.code||'Estado no disponible');
+      return {o,status:String(data?.status||'UNKNOWN').toUpperCase()};
+    }));
+
+    let cambio=false;
+    resultados.forEach(r=>{
+      if(r.status!=='fulfilled')return;
+      const {o,status}=r.value;
+      if(!status)return;
+      o.estadoProveedor=status;
+      o.estado=status;
+      cambio=true;
+    });
+
+    if(cambio){
+      window.lyvAllOrders=historialOrdenes.slice();
+      renderizarHistorial();
+      renderAdminDashboard();
+    }
+  }catch(e){
+    console.warn('No se pudo sincronizar el estado real con SixoFire:',e);
+  }
 }
 
 function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=historialOrdenes.filter(o=>o.tipo!=='recarga').length;}
