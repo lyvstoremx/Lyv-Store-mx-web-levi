@@ -680,7 +680,7 @@
             <!-- VENTAS EN TIEMPO REAL -->
             <div id="liveSalesTicker" style="background: rgba(255, 91, 99, 0.08); border: 1px solid rgba(255, 91, 99, 0.25); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">
                 <span style="font-size: 1rem;">🔥</span>
-                <div id="liveSalesText">🟢 Pedidos procesados de forma segura mediante SixoFire.</div>
+                <div id="liveSalesText">🟢 Pedidos procesados de forma segura.</div>
             </div>
 
             <!-- CATÁLOGO DINÁMICO -->
@@ -958,7 +958,7 @@
                 <div style="display:grid;gap:7px;font-size:.74rem;">
                     <div class="admin-row"><span>Mercado Pago</span><span style="color:#6ee7a0">Preparado para backend/webhook</span></div>
                     <div class="admin-row"><span>Binance</span><span style="color:#6ee7a0">Preparado para confirmación real</span></div>
-                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">SixoFire conectado por backend</span></div>
+                    <div class="admin-row"><span>Proveedor Free Fire</span><span style="color:#6ee7a0">Proveedor conectado por backend</span></div>
                     <div class="admin-row"><span>Comprobantes OXXO</span><span style="color:#ffc107">Revisión manual</span></div>
                 </div>
             </div>
@@ -966,7 +966,7 @@
             <!-- PRUEBA TEMPORAL DE CONEXIÓN CON EDGE FUNCTION -->
             <div class="card" id="cleverTestCard">
                 <div class="card-title" style="color:var(--accent-blue);">🔐 Prueba de conexión segura</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Esta prueba solo verifica que tu sesión puede llegar al backend. No crea compras, no descuenta saldo y no llama a SixoFire.</p>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Esta prueba solo verifica que tu sesión puede llegar al backend. No crea compras ni descuenta saldo.</p>
                 <button class="btn-action" type="button" onclick="probarConexionClever()">Probar conexión</button>
                 <div id="cleverTestResultado" style="margin-top:10px;font-size:.75rem;"></div>
             </div>
@@ -1030,8 +1030,8 @@
 
             <div class="card">
                 <div class="card-title" data-i18n="productosActualesTitle">Productos Actuales en Tienda</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45">Conecta automáticamente cada producto de la tienda con su <b>product_id real de SixoFire</b>. No se inventan IDs.</p>
-                <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;margin-bottom:12px" onclick="sincronizarCatalogoSixoFire()">🔄 Sincronizar catálogo con SixoFire</button>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45">Sincroniza automáticamente los productos de la tienda con el proveedor.</p>
+                <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff;margin-bottom:12px" onclick="sincronizarCatalogoSixoFire()">🔄 Sincronizar catálogo</button>
                 <div id="adminProductList" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
 
@@ -1076,12 +1076,12 @@
                 <div id="adminProveedorCatalogoResultado" style="font-size:.72rem;margin-top:9px;"></div>
                 <div id="sixoFireRealTestBox" style="display:none;margin-top:12px;padding:12px;border:1px solid rgba(255,193,7,.28);border-radius:12px;background:rgba(255,193,7,.05);">
                     <div style="font-size:.72rem;color:#ffc107;margin-bottom:6px;">⚠️ Prueba real de proveedor</div>
-                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real en SixoFire y consume $0.03 USD del saldo del proveedor.</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">Esta prueba crea una orden real de prueba y consume $0.03 USD del saldo del proveedor.</div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:9px;">UID: <b>14608057611</b> · Producto: <b>17729</b> · Fragmento Universal · <b>$0.03 USD</b></div>
                     <button id="btnPruebaOrdenSixoFire" class="btn-action" type="button" onclick="probarOrdenRealSixoFire()">🧪 Crear orden real de $0.03 USD</button>
                     <div id="adminPruebaOrdenResultado" style="font-size:.7rem;margin-top:8px"></div>
                 </div>
-                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La consulta de catálogo usa SixoFire desde el backend. La orden de prueba solo se envía cuando confirmas el botón amarillo.</div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">La consulta de catálogo usa el proveedor desde el backend. La orden de prueba solo se envía cuando confirmas el botón amarillo.</div>
             </div>
 
             <!-- CENTRO DE INCIDENCIAS -->
@@ -2369,7 +2369,7 @@ async function confirmarCompraVisual(){
     }
 
     const btn=document.querySelector('#lyvModalBox .modal-actions .btn-action');
-    if(btn){btn.disabled=true;btn.textContent='Enviando a SixoFire...';}
+    if(btn){btn.disabled=true;btn.textContent='Enviando pedido...';}
 
     try{
         // El backend es la autoridad: si el frontend todavía no conoce el ID,
@@ -2431,7 +2431,7 @@ async function confirmarCompraVisual(){
         abrirModal(`
           <div style="text-align:center">
             <div style="font-size:2.8rem">✅</div>
-            <h3 style="margin:8px 0">¡Orden enviada a SixoFire!</h3>
+            <h3 style="margin:8px 0">¡Orden enviada!</h3>
             <p style="font-size:.8rem;color:var(--text-muted)">
               La tienda recibió la respuesta real del proveedor.
             </p>
@@ -2707,7 +2707,7 @@ async function sincronizarCatalogoSixoFire(){
     }catch(e){
         alert('❌ '+(e?.message||'No se pudo sincronizar el catálogo.'));
     }finally{
-        if(btn){btn.disabled=false;btn.textContent='🔄 Sincronizar catálogo con SixoFire';}
+        if(btn){btn.disabled=false;btn.textContent='🔄 Sincronizar catálogo';}
     }
 }
 
