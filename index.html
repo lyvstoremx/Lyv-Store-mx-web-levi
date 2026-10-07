@@ -683,7 +683,7 @@
             <!-- VENTAS EN TIEMPO REAL -->
             <div id="liveSalesTicker" style="background: rgba(255, 91, 99, 0.08); border: 1px solid rgba(255, 91, 99, 0.25); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">
                 <span style="font-size: 1rem;">🔥</span>
-                <div id="liveSalesText">🟢 Pedidos procesados de forma segura.</div>
+                <div id="liveSalesText">🟢 Cargando ventas en tiempo real...</div>
             </div>
 
             <!-- CATÁLOGO DINÁMICO -->
@@ -941,6 +941,19 @@
                 <div style="font-size:.68rem;color:var(--text-muted);margin-top:9px;">🔒 Esta acción se procesa mediante el backend seguro de Supabase, con autorización de administrador y registro de la operación.</div>
             </div>
 
+            <!-- RETIRO MANUAL DE SALDO -->
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">➖ Quitar saldo a un usuario</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;">Permite retirar saldo manualmente por un ajuste, devolución o corrección. Se registra como movimiento real en la billetera.</p>
+                <div style="display:flex;flex-direction:column;gap:9px;">
+                    <input id="adminDebitoUsuarioId" type="text" placeholder="ID de usuario, correo, username o ID Free Fire">
+                    <input id="adminDebitoMonto" type="text" inputmode="decimal" autocomplete="off" placeholder="Monto a quitar en MXN">
+                    <input id="adminDebitoMotivo" type="text" maxlength="120" placeholder="Motivo del ajuste">
+                    <button class="btn-action" style="background:rgba(255,91,99,.12);border:1px solid rgba(255,91,99,.3);color:#ff7b82;" onclick="quitarSaldoAdminVisual()">Quitar saldo</button>
+                </div>
+                <div id="adminDebitoResultado" style="margin-top:10px;"></div>
+            </div>
+
             <!-- HISTORIAL DE AJUSTES -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">🧾 Historial de créditos manuales</div>
@@ -1063,6 +1076,13 @@
                 <div id="adminUsuariosList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
             </div>
 
+            <!-- OPINIONES Y CALIFICACIONES -->
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">⭐ Quejas, sugerencias y calificaciones</div>
+                <div id="adminFeedbackResumen" style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Cargando...</div>
+                <div id="adminFeedbackList"></div>
+            </div>
+
             <!-- DETALLE Y ESTADOS DEL PROVEEDOR -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">🔌 Conexión de productos Free Fire</div>
@@ -1134,6 +1154,31 @@
                 <button class="btn-action" id="btnGuardarPerfil" onclick="guardarPerfilVisual()">Guardar cambios</button>
                 <div id="perfilGuardadoEstado" style="font-size:.72rem;margin-top:9px;color:var(--text-muted);"></div>
             </div>
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">🆔 Mi ID de usuario</div>
+                <div style="font-size:.78rem;color:var(--text-muted);line-height:1.45;">Este es el ID que puedes proporcionar a soporte o al administrador si necesitas ayuda con tu cuenta.</div>
+                <div style="margin-top:9px;padding:12px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.03);font-weight:900;font-size:1rem;text-align:center;letter-spacing:.6px;" id="perfilUserId">—</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">⭐ Califica Lyv Store Mx</div>
+                <div id="lyvRatingSummary" style="font-size:.76rem;color:var(--text-muted);margin-bottom:10px;">Cargando calificación...</div>
+                <div id="lyvStarPicker" style="display:flex;justify-content:center;gap:7px;margin:8px 0 12px;">
+                    <button type="button" class="btn-action lyv-star" data-star="1" onclick="seleccionarCalificacionLyv(1)" style="width:auto;padding:7px 9px;background:rgba(255,255,255,.04);box-shadow:none;">★</button>
+                    <button type="button" class="btn-action lyv-star" data-star="2" onclick="seleccionarCalificacionLyv(2)" style="width:auto;padding:7px 9px;background:rgba(255,255,255,.04);box-shadow:none;">★</button>
+                    <button type="button" class="btn-action lyv-star" data-star="3" onclick="seleccionarCalificacionLyv(3)" style="width:auto;padding:7px 9px;background:rgba(255,255,255,.04);box-shadow:none;">★</button>
+                    <button type="button" class="btn-action lyv-star" data-star="4" onclick="seleccionarCalificacionLyv(4)" style="width:auto;padding:7px 9px;background:rgba(255,255,255,.04);box-shadow:none;">★</button>
+                    <button type="button" class="btn-action lyv-star" data-star="5" onclick="seleccionarCalificacionLyv(5)" style="width:auto;padding:7px 9px;background:rgba(255,255,255,.04);box-shadow:none;">★</button>
+                </div>
+                <select id="lyvFeedbackTipo" style="margin-bottom:8px;">
+                    <option value="suggestion">💡 Sugerencia</option>
+                    <option value="complaint">🚨 Queja / Reporte</option>
+                </select>
+                <textarea id="lyvFeedbackMensaje" maxlength="1000" rows="4" placeholder="Cuéntanos qué te gustaría mejorar o qué problema tuviste..."></textarea>
+                <button class="btn-action" onclick="enviarFeedbackLyv()">Enviar opinión</button>
+                <div id="lyvFeedbackEstado" style="font-size:.72rem;margin-top:8px;color:var(--text-muted);"></div>
+            </div>
+
             <div class="card">
                 <div class="card-title">🔐 Seguridad</div>
                 <input id="perfilPassNueva" type="password" placeholder="Nueva contraseña">
@@ -1923,6 +1968,7 @@ cargarImagenesProductosGuardadas();
             const pu=document.getElementById('perfilUsuario'); if(pu) pu.value=usuarioActual;
             const pn=document.getElementById('perfilNombre'); if(pn) pn.value=perfilNombreActual;
             const pc=document.getElementById('perfilCorreo'); if(pc) pc.value=correoUsuario;
+            const pid=document.getElementById('perfilUserId'); if(pid) pid.innerText=window.lyvUserId || 'No disponible';
             const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
             const esAdmin = perfil?.role === 'admin' || String(correoUsuario || user.email || '').trim().toLowerCase() === 'lyvstoremxweb@gmail.com';
             const am=document.getElementById('adminMenuLink'); if(am) am.style.display=esAdmin?'flex':'none';
@@ -2314,7 +2360,7 @@ function mostrarRecuperacion(){
     <input id="recoverEmail" type="email" placeholder="Correo electrónico">
     <div class="modal-actions"><button class="btn-action" onclick="enviarRecuperacionVisual()">Enviar enlace</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div>`);
 }
-async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremxfinallista.vercel.app/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
+async function enviarRecuperacionVisual(){const e=document.getElementById('recoverEmail').value.trim().toLowerCase();if(!e){alert('Ingresa tu correo.');return;}try{const {error}=await lyvSupabase.auth.resetPasswordForEmail(e,{redirectTo:'https://lyvstoremx.com/'});if(error)throw error;lyvLog('RECUPERACIÓN',`Solicitud real enviada para ${e}`);abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">✉️</div><h3 style="margin:8px 0">Correo enviado</h3><p style="font-size:.8rem;color:var(--text-muted)">Revisa tu correo para continuar con la recuperación segura de tu contraseña.</p><button class="btn-action" style="margin-top:12px" onclick="cerrarModal()">Cerrar</button></div>`);}catch(err){alert('No se pudo enviar el correo de recuperación: '+(err?.message||'Error'));}}
 
 function obtenerLimiteCantidadProducto(){
     // Lyv Store controla siempre cantidades de 1 a 99.
@@ -2553,11 +2599,9 @@ function renderizarHistorial(){const c=document.getElementById('listaHistorial')
 async function cargarOrdenesReales(){
     if(!usuarioActual) return;
     try{
-      const {data,error}=await lyvSupabase
-        .from('lyv_store_orders')
-        .select('*')
-        .order('created_at',{ascending:false})
-        .limit(100);
+      gastoTotal = 0;
+      totalOrdenesCount = 0;
+      const {data,error}=await lyvSupabase.rpc('lyv_get_my_orders');
       if(error) throw error;
       historialOrdenes=(data||[]).map(o=>({
         id:o.local_order_id || (o.provider_order_id ? 'ORD-'+o.provider_order_id : String(o.id)),
@@ -2828,6 +2872,122 @@ async function acreditarCreditoAdminVisual(){
     }
 }
 
+
+let lyvCalificacionSeleccionada=5;
+
+function seleccionarCalificacionLyv(n){
+  lyvCalificacionSeleccionada=Math.max(1,Math.min(5,Number(n)||5));
+  document.querySelectorAll('.lyv-star').forEach(b=>{
+    const s=Number(b.dataset.star||0);
+    b.style.color=s<=lyvCalificacionSeleccionada?'#ffd54a':'#777';
+    b.style.borderColor=s<=lyvCalificacionSeleccionada?'rgba(255,213,74,.35)':'var(--card-border)';
+    b.style.background=s<=lyvCalificacionSeleccionada?'rgba(255,213,74,.08)':'rgba(255,255,255,.04)';
+  });
+}
+async function cargarCalificacionLyv(){
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_get_store_rating');
+    if(error) throw error;
+    const avg=Number(data?.average_rating||0);
+    const count=Number(data?.rating_count||0);
+    const el=document.getElementById('lyvRatingSummary');
+    if(el) el.innerHTML=count?`⭐ <b>${avg.toFixed(1)}/5</b> · ${count} calificación${count===1?'':'es'} reales`:'Aún no hay calificaciones. Sé el primero en calificar.';
+  }catch(e){
+    const el=document.getElementById('lyvRatingSummary');
+    if(el) el.innerText='La calificación estará disponible en cuanto el servicio esté conectado.';
+  }
+  seleccionarCalificacionLyv(lyvCalificacionSeleccionada);
+}
+async function enviarFeedbackLyv(){
+  if(!usuarioActual){alert('Inicia sesión para enviar una opinión.');cambiarVista('login');return;}
+  const tipo=document.getElementById('lyvFeedbackTipo')?.value||'suggestion';
+  const mensaje=String(document.getElementById('lyvFeedbackMensaje')?.value||'').trim();
+  if(!mensaje){alert('Escribe tu opinión antes de enviarla.');return;}
+  if(!lyvCalificacionSeleccionada || lyvCalificacionSeleccionada<1 || lyvCalificacionSeleccionada>5){alert('Selecciona de 1 a 5 estrellas.');return;}
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_submit_feedback',{
+      p_kind:tipo,
+      p_rating:Number(lyvCalificacionSeleccionada),
+      p_message:mensaje
+    });
+    if(error) throw error;
+    const st=document.getElementById('lyvFeedbackEstado');
+    if(st) st.innerHTML='<span style="color:#6ee7a0">✓ Gracias. Tu opinión fue registrada.</span>';
+    const ta=document.getElementById('lyvFeedbackMensaje'); if(ta) ta.value='';
+    await cargarCalificacionLyv();
+    if(typeof renderAdminFeedback==='function') renderAdminFeedback();
+  }catch(e){
+    alert('No se pudo enviar la opinión: '+(e?.message||'Error'));
+  }
+}
+async function cargarVentasEnTiempoReal(){
+  const el=document.getElementById('liveSalesText');
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_get_public_sales_count');
+    if(error) throw error;
+    const n=Number(data||0);
+    if(el) el.innerHTML=`🟢 <b>${n.toLocaleString('es-MX')}</b> venta${n===1?'':'s'} registradas en tiempo real`;
+  }catch(e){
+    if(el) el.innerText='🟢 Pedidos procesados de forma segura.';
+  }
+}
+function iniciarActualizacionVentasTiempoReal(){
+  cargarVentasEnTiempoReal();
+  if(window.lyvSalesInterval) clearInterval(window.lyvSalesInterval);
+  window.lyvSalesInterval=setInterval(cargarVentasEnTiempoReal,10000);
+}
+async function quitarSaldoAdminVisual(){
+  const target=String(document.getElementById('adminDebitoUsuarioId')?.value||'').trim();
+  let raw=String(document.getElementById('adminDebitoMonto')?.value||'').trim().replace(/[^\d.,-]/g,'');
+  if(raw.includes(',')&&raw.includes('.')) raw=raw.replace(/,/g,''); else raw=raw.replace(',','.');
+  const amount=Number(raw);
+  const reason=String(document.getElementById('adminDebitoMotivo')?.value||'').trim();
+  if(!target){alert('Ingresa el ID de usuario, correo, username o ID de Free Fire.');return;}
+  if(!Number.isFinite(amount)||amount<=0){alert('Ingresa un monto válido mayor a 0.');return;}
+  if(!reason){alert('Indica el motivo del ajuste.');return;}
+  try{
+    const {data,error}=await lyvSupabase.rpc('get_admin_profiles');
+    if(error) throw error;
+    const t=target.toLowerCase();
+    const user=(data||[]).find(u=>[
+      u.id,u.lyv_user_id,u.email,u.username,u.free_fire_id
+    ].filter(Boolean).some(v=>String(v).toLowerCase()===t));
+    if(!user) throw new Error('TARGET_USER_NOT_FOUND');
+    if(!confirm(`¿Quitar $${amount.toFixed(2)} MXN a @${user.username||user.email||user.id}?\n\nMotivo: ${reason}`))return;
+    const res=await lyvSupabase.rpc('lyv_admin_debit_wallet',{
+      p_user_id:user.id,
+      p_amount:Number(amount.toFixed(2)),
+      p_reason:reason
+    });
+    if(res.error) throw res.error;
+    const d=res.data||{};
+    const out=document.getElementById('adminDebitoResultado');
+    if(out) out.innerHTML=`<div style="padding:10px;border-radius:10px;border:1px solid rgba(255,91,99,.3);background:rgba(255,91,99,.07);font-size:.74rem;color:#ff9aa0">✓ Saldo retirado: <b>-$${Number(d.amount_mxn||amount).toFixed(2)} MXN</b><br>Usuario: <b>${escapeHtml(user.username||user.email||user.id)}</b><br>Nuevo saldo: <b>$${Number(d.balance_mxn||0).toFixed(2)} MXN</b></div>`;
+    const a=document.getElementById('adminDebitoUsuarioId'),m=document.getElementById('adminDebitoMonto'),r=document.getElementById('adminDebitoMotivo');
+    if(a)a.value='';if(m)m.value='';if(r)r.value='';
+    lyvLog('DÉBITO ADMIN',`-$${Number(d.amount_mxn||amount).toFixed(2)} MXN a ${user.id}: ${reason}`);
+  }catch(e){
+    alert('No se pudo quitar el saldo: '+(e?.message||e||'Error'));
+  }
+}
+async function renderAdminFeedback(){
+  const c=document.getElementById('adminFeedbackList');
+  const s=document.getElementById('adminFeedbackResumen');
+  if(!c)return;
+  c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Cargando opiniones...</div>';
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_get_admin_feedback');
+    if(error) throw error;
+    const arr=Array.isArray(data)?data:[];
+    const ratings=arr.map(x=>Number(x.rating||0)).filter(x=>x>=1&&x<=5);
+    const avg=ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0;
+    if(s)s.innerHTML=ratings.length?`⭐ Promedio: <b>${avg.toFixed(1)}/5</b> · ${ratings.length} calificaciones`:'Aún no hay opiniones.';
+    c.innerHTML=arr.length?arr.slice(0,50).map(x=>`<div class="admin-row" style="display:block;margin-top:7px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${escapeHtml(x.kind==='complaint'?'🚨 Queja':'💡 Sugerencia')}</b><span>⭐ ${Number(x.rating||0)}/5</span></div><div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">@${escapeHtml(x.username||'-')} · ${escapeHtml(x.email||'-')}</div><div style="font-size:.76rem;margin-top:6px;line-height:1.4">${escapeHtml(x.message||'')}</div><div style="font-size:.65rem;color:var(--text-muted);margin-top:5px">${escapeHtml(x.created_at?new Date(x.created_at).toLocaleString():'')}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay opiniones todavía.</div>';
+  }catch(e){
+    c.innerHTML='<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las opiniones.</div>';
+  }
+}
+
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
 function renderAdminLogs(){const c=document.getElementById('adminLogs');if(!c)return;c.innerHTML=lyvLogs.length?lyvLogs.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--card-border);font-size:.72rem"><b>${escapeHtml(x.tipo)}</b> — ${escapeHtml(x.detalle)}<div style="color:var(--text-muted);margin-top:2px">${escapeHtml(x.fecha)}</div></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted)">Sin actividad todavía.</div>';}
 function buscarGlobalAdmin(q){const c=document.getElementById('adminResultadosGlobal');if(!c)return;q=q.trim().toLowerCase();if(!q){c.innerHTML='';return;}const arr=(window.lyvAllOrders||[]).filter(o=>[o.id,o.ffid,o.email,o.usuario,o.producto].some(v=>String(v||'').toLowerCase().includes(q)));c.innerHTML=arr.length?arr.map(o=>`<div class="admin-row" style="margin-top:7px"><div><b>${escapeHtml(o.id)}</b><div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(o.email||o.usuario||'')} • ${escapeHtml(o.ffid||'')}</div></div><button class="btn-action" style="width:auto;padding:7px 10px" onclick="verPedido('${o.id}')">Ver</button></div>`).join(''):'<div style="font-size:.75rem;color:var(--text-muted);padding:8px">Sin coincidencias.</div>';}
@@ -2993,6 +3153,9 @@ async function validarId(){
 
 // Redibuja extras al cargar sin alterar el diseño existente.
 window.addEventListener('load',()=>{
+  iniciarActualizacionVentasTiempoReal();
+  cargarCalificacionLyv();
+  seleccionarCalificacionLyv(5);
   cargarReportesPagoVisual();
   productos.forEach(p=>{if(typeof p.activo==='undefined')p.activo=true});
   renderizarTienda();
@@ -3157,7 +3320,7 @@ async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResult
   }
 }
 
-function renderAdminCompleto(){
+function renderAdminCompleto(){renderAdminFeedback();
     try{renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');renderAdminIncidencias();renderAdminProveedor();renderAdminOtrosProductos();cargarConfiguracionAdmin();}catch(e){console.warn('Admin completo:',e);}
 }
 
