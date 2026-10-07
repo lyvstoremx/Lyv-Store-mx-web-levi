@@ -566,6 +566,13 @@
 #lyvPlayerAvatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#171717;border:1px solid rgba(255,255,255,.12)}
 #lyvPlayerInfoName{font-weight:800}
 #lyvPlayerInfoMeta{font-size:.78rem;color:var(--text-muted);margin-top:3px}
+
+#lyvTop5Recargas{margin:14px 0;padding:14px;border:1px solid rgba(255,91,99,.22);border-radius:14px;background:rgba(255,255,255,.035)}
+#lyvTop5Recargas h3{margin:0 0 8px;font-size:1rem}
+#lyvTop5Recargas .lyv-top-empty{color:var(--text-muted);font-size:.82rem}
+#lyvTop5Recargas ol{margin:8px 0 0;padding-left:24px}
+#lyvTop5Recargas li{padding:5px 0;font-size:.86rem}
+#lyvTop5Recargas .lyv-top-amount{float:right;font-weight:800}
 </style>
 </head>
 <body>
@@ -3168,6 +3175,105 @@ window.addEventListener('load',()=>{
 (function(){
   try{renderizarOtrosProductosPublicos();renderAdminOtrosProductos();cargarConfiguracionAdmin();renderAdminCompleto();}catch(e){console.warn('Inicialización admin:',e);}
 })();
+
+async function cargarTop5Recargas(){
+  const cont=document.getElementById('lyvTop5RecargasContenido');
+  if(!cont) return;
+
+  try{
+    // Intentamos leer una tabla de recargas real si existe en el proyecto.
+    // No usamos localStorage, saldo ni datos inventados para el ranking.
+    const candidatos=['recharges','lyv_recharges','lyv_recharge_transactions'];
+    let filas=null;
+
+    for(const tabla of candidatos){
+      try{
+        const {data,error}=await lyvSupabase
+          .from(tabla)
+          .select('*')
+          .limit(5000);
+        if(!error && Array.isArray(data) && data.length){
+          filas=data;
+          break;
+        }
+      }catch(_){}
+    }
+
+    if(!filas){
+      cont.innerHTML='Aún no hay recargas registradas.';
+      return;
+    }
+
+    const normalizadas=filas.map(r=>{
+      const userId=r.user_id||r.userid||r.uid||r.id_usuario||null;
+      const amount=Number(
+        r.amount_mxn??r.amount??r.monto_mxn??r.monto??r.total_mxn??0
+      );
+      const status=String(
+        r.status??r.payment_status??r.estado??''
+      ).toUpperCase();
+
+      return {userId,amount,status};
+    }).filter(x=>{
+      if(!x.userId || !Number.isFinite(x.amount) || x.amount<=0) return false;
+      if(!x.status) return true;
+      return ['PAID','APPROVED','COMPLETED','CONFIRMED','SUCCESS','ACCEPTED','ENTREGADO'].includes(x.status);
+    });
+
+    if(!normalizadas.length){
+      cont.innerHTML='Aún no hay recargas confirmadas.';
+      return;
+    }
+
+    const mapa=new Map();
+    for(const r of normalizadas){
+      mapa.set(r.userId,(mapa.get(r.userId)||0)+r.amount);
+    }
+
+    const top=[...mapa.entries()]
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,5);
+
+    if(!top.length){
+      cont.innerHTML='Aún no hay recargas confirmadas.';
+      return;
+    }
+
+    const ids=top.map(x=>x[0]);
+    let perfiles=[];
+    try{
+      const {data}=await lyvSupabase
+        .from('profiles')
+        .select('id,username,display_name')
+        .in('id',ids);
+      perfiles=data||[];
+    }catch(_){}
+
+    const nombre=(id)=>{
+      const p=perfiles.find(x=>String(x.id)===String(id));
+      return p?.username || p?.display_name || ('Usuario '+String(id).slice(0,6));
+    };
+
+    cont.innerHTML='<ol>'+top.map(([id,total])=>
+      '<li><b>'+escapeHtml(nombre(id))+'</b><span class="lyv-top-amount">$'+
+      Number(total).toFixed(2)+' MXN</span></li>'
+    ).join('')+'</ol>';
+  }catch(e){
+    console.warn('Top 5 de recargas no disponible todavía:',e);
+    cont.innerHTML='Aún no hay recargas registradas.';
+  }
+}
+
 </script>
+<section id="lyvTop5Recargas">
+  <h3>🏆 Top 5 — usuarios que más recargan</h3>
+  <div id="lyvTop5RecargasContenido" class="lyv-top-empty">Aún no hay recargas registradas.</div>
+</section>
 </body>
 </html>
+
+<script>
+window.addEventListener('load', function(){
+  if(typeof cargarTop5Recargas==='function') cargarTop5Recargas();
+});
+</script>
