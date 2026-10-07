@@ -1879,7 +1879,7 @@ async function cargarSaldoReal(){
             }
 
             correoUsuario = user.email || perfil?.email || correoUsuario;
-            usuarioActual = perfil?.username || baseAuth;
+            usuarioActual = perfil?.username || user.user_metadata?.username || user.user_metadata?.user_name || user.user_metadata?.preferred_username || baseAuth;
             perfilNombreActual = perfil?.display_name || perfilNombreActual || usuarioActual;
             window.lyvUserId = perfil?.lyv_user_id || window.lyvUserId || '';
             if(perfil?.free_fire_id) idFreeFire=perfil.free_fire_id;
@@ -2589,7 +2589,7 @@ function renderizarHistorialRecargasSafe(){
 function generarIdRecargaUnico(){let id;do{id='TX-'+Math.floor(100000+Math.random()*900000)}while((window.lyvAllTopups||[]).some(r=>r.id===id)||historialOrdenes.some(r=>r.id===id));return id;}
 function confirmarRecargaVisual(){const p=lyvPendingRecharge;if(!p)return;const id=generarIdRecargaUnico();const rec={id,montoUsd:p.montoUsd||p.monto,montoMxn:p.montoMxn||obtenerTotalMxn(p.montoUsd||p.monto),monedaBase:'USD',metodo:p.metodo,referenciaBinance:p.referenciaBinance||null,estado:p.metodo==='oxxo'?'PENDIENTE DE REVISIÓN':'PENDIENTE DE CONFIRMACIÓN',fecha:new Date().toLocaleString(),tipo:'recarga'};window.lyvAllTopups=window.lyvAllTopups||[];window.lyvAllTopups.unshift(rec);historialOrdenes.unshift(rec);if(typeof recargasRegistradas!=='undefined')recargasRegistradas.unshift(rec);lyvLog('RECARGA',`${id} por $${Number(rec.montoUsd).toFixed(2)} USD vía ${METODOS_PAGO[p.metodo].nombre}`);renderizarHistorialRecargasSafe();renderizarHistorial();lyvPendingRecharge=null;abrirModal(`<div style="text-align:center"><div style="font-size:2.5rem">⏳</div><h3>Solicitud registrada</h3><p style="font-size:.8rem;color:var(--text-muted);margin:10px 0">Referencia: <b>${id}</b><br>Estado: Pendiente de confirmación</p><button class="btn-action" onclick="cerrarModal();cambiarVista('historial')">Ver historial</button></div>`);}
 
-async function guardarPerfilVisual(){
+async async function guardarPerfilVisual(){
     if(!usuarioActual){alert('Inicia sesión para editar tu perfil.');return;}
     const u=(document.getElementById('perfilUsuario')?.value||'').trim();
     const n=(document.getElementById('perfilNombre')?.value||'').trim();
@@ -2601,17 +2601,33 @@ async function guardarPerfilVisual(){
     try{
         if(btn){btn.disabled=true;btn.textContent='Guardando...';}
         if(estado){estado.textContent='Guardando en tu cuenta...';estado.style.color='var(--text-muted)';}
+
         const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
         if(userError||!user) throw userError||new Error('Sesión no encontrada.');
-        const {error}=await lyvSupabase.rpc('update_my_profile', {p_username:u, p_display_name:n});
+
+        const {error}=await lyvSupabase.rpc('update_my_profile', {
+            p_username:u,
+            p_display_name:n
+        });
         if(error){
             if(error.code==='23505') throw new Error('Ese nombre de usuario ya está ocupado. Elige otro.');
             throw error;
         }
+
+        // Copia también el nombre en los metadatos de Supabase Auth.
+        // Sirve como respaldo cuando la sesión se restaura después de recargar.
+        const {error:metaError}=await lyvSupabase.auth.updateUser({
+            data:{user_name:u, username:u, full_name:n, name:n}
+        });
+        if(metaError) console.warn('Perfil guardado, pero no se actualizaron metadatos:',metaError);
+
         usuarioActual=u;
         perfilNombreActual=n;
         document.getElementById('headerUserBtn').innerText=u.toUpperCase();
         const pu=document.getElementById('perfilUsuarioActual');if(pu)pu.innerText='@'+u;
+        const pf=document.getElementById('perfilUsuario');if(pf)pf.value=u;
+        const pn=document.getElementById('perfilNombre');if(pn)pn.value=n;
+
         lyvLog('PERFIL',`Usuario ${correoUsuario} actualizó su usuario a @${u} y nombre a ${n}`);
         if(estado){estado.textContent='✓ Cambios guardados correctamente.';estado.style.color='#6ee7a0';}
         alert('Perfil actualizado correctamente.');
