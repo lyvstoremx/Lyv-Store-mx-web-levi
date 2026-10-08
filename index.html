@@ -3215,6 +3215,24 @@ async function validarId(){
 }
 
 // Redibuja extras al cargar sin alterar el diseño existente.
+async function lyvRestaurarRecargaPendiente(){
+  try{
+    if(!usuarioActual)return;
+    const {data,error}=await lyvSupabase.rpc('lyv_get_my_manual_recharges');
+    if(error)throw error;
+    const arr=Array.isArray(data)?data:[];
+    const pending=arr.find(r=>String(r.status||'').toUpperCase()==='PENDING');
+    if(pending){
+      lyvManualRechargeCurrent=pending;
+      window.lyvManualRechargeCurrent=pending;
+      referenciaPagoActual=pending.payment_code||null;
+      const sel=document.getElementById('reportMetodo');
+      if(sel && pending.payment_method)sel.value=pending.payment_method;
+      renderizarDetalleMetodoPagoManual();
+    }
+  }catch(e){console.warn('No se pudo restaurar recarga pendiente:',e);}
+}
+
 window.addEventListener('load',()=>{
   iniciarActualizacionVentasTiempoReal();
   cargarCalificacionLyv();
@@ -3652,7 +3670,7 @@ function renderizarDetalleMetodoPagoManual(){
       <b>Binance USDT · GLOBAL</b>
       <div style="font-size:.76rem;margin-top:6px">Paquete: <b>$${usd.toFixed(2)} USD</b> · Total: <b>${usd.toFixed(2)} USDT</b></div>
       <div style="font-size:.76rem;margin-top:7px">ID Binance destino: <b>${LYV_PAYMENT_DATA.binance.destino}</b></div>
-      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
+      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX | ${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
     </div>`;
   }else if(metodoPagoElegido==='transferencia'){
     const d=LYV_PAYMENT_DATA.transferencia;
@@ -3660,7 +3678,7 @@ function renderizarDetalleMetodoPagoManual(){
       <b>Transferencia bancaria · México</b>
       <div style="font-size:1.05rem;margin-top:6px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div>
       <div style="font-size:.75rem;margin-top:7px">Cuenta: <b>${d.cuenta}</b></div><div style="font-size:.75rem">Banco: <b>${lyvManualEscape(d.banco)}</b></div><div style="font-size:.75rem">Nombre: <b>${lyvManualEscape(d.nombre)}</b></div>
-      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
+      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX | ${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
     </div>`;
   }else if(metodoPagoElegido==='oxxo'){
     const d=LYV_PAYMENT_DATA.oxxo;
@@ -3668,10 +3686,22 @@ function renderizarDetalleMetodoPagoManual(){
       <b>Depósito OXXO · México</b>
       <div style="font-size:1.12rem;margin-top:6px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div>
       <div style="font-size:.75rem;margin-top:7px">Cuenta: <b>${d.cuenta}</b></div><div style="font-size:.75rem">Banco: <b>${lyvManualEscape(d.banco)}</b></div><div style="font-size:.75rem">Nombre: <b>${lyvManualEscape(d.nombre)}</b></div>
-      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
+      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>VENTA DIGITAL LYV STORE MX | ${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}${action}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
     </div>`;
   }
   c.innerHTML=html;
+}
+
+function lyvVerInstruccionesActuales(){
+  const recharge=window.lyvManualRechargeCurrent||lyvManualRechargeCurrent;
+  if(!recharge?.id){alert('Primero genera una solicitud de recarga.');return;}
+  cerrarModal();
+  try{cambiarVista('billetera');}catch(e){}
+  setTimeout(()=>{
+    renderizarDetalleMetodoPagoManual();
+    const el=document.getElementById('detalleMetodoPagoContainer');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  },120);
 }
 
 function lyvMostrarConfirmacionPago(){
@@ -3727,7 +3757,7 @@ async function lyvCrearRecargaManualReal(){
       Total: <b>${metodoPagoElegido==='binance'?usd.toFixed(2)+' USDT':'$'+amountMxn.toFixed(2)+' MXN'}</b><br>
       Tu ID de usuario: <b>${lyvManualEscape(lyvCurrentUserId())}</b></p>
       <p style="font-size:.72rem;color:var(--text-muted)">Concepto recomendado: <b>VENTA DIGITAL LYV STORE MX | ${lyvManualEscape(code)}</b><br>⚠️ Coloca exactamente ese concepto/código cuando el método lo permita. Si falta o no coincide, el pago puede ser rechazado o requerir revisión adicional.<br><br>Después de realizar el pago, pulsa <b>“Ya hice el pago”</b>. La página te pedirá el ID/folio y la foto del comprobante.</p>
-      <div class="modal-actions"><button class="btn-action" onclick="cerrarModal();cambiarVista('billetera');">Continuar</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button></div>
+      <div class="modal-actions"><button class="btn-action" onclick="lyvVerInstruccionesActuales()">💳 Ver instrucciones de pago</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button></div>
     </div>`);
     renderizarHistorialRecargasSafe();
     lyvLog('RECARGA REAL',`${code} · ${lyvManualMethodName(metodoPagoElegido)} · $${amountMxn.toFixed(2)} MXN · ${lyvCurrentUserId()}`);
@@ -3769,7 +3799,7 @@ async function cargarRecargasManualesAdmin(){
   try{
     const {data,error}=await lyvSupabase.rpc('lyv_admin_list_manual_recharges');if(error)throw error;const arr=Array.isArray(data)?data:[];
     if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay recargas registradas.</div>';return;}
-    c.innerHTML=arr.map(r=>{const st=String(r.status||'PENDING').toUpperCase(),color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107',text=st==='COMPLETED'?'COMPLETADA':st==='REJECTED'?'RECHAZADA':'PENDIENTE',date=r.created_at?new Date(r.created_at).toLocaleString('es-MX'):'—';return `<div class="admin-row" style="margin-top:8px;align-items:flex-start;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><b>🔖 ${lyvManualEscape(r.payment_code||'SIN CÓDIGO')}</b><div style="font-size:.72rem;color:var(--text-muted)">${lyvManualEscape(lyvManualMethodName(r.payment_method))} · ${Number(r.amount_mxn||0).toFixed(2)} MXN</div><div style="font-size:.72rem;color:var(--text-muted)">Concepto: <b>VENTA DIGITAL LYV STORE MX</b></div><div style="font-size:.72rem;color:var(--text-muted)">Código de pago: <b>${lyvManualEscape(r.payment_code||'—')}</b></div><div style="font-size:.72rem;color:var(--text-muted)">ID transferencia/folio: <b>${lyvManualEscape(r.transaction_id||'No enviado')}</b></div><div style="font-size:.7rem;color:var(--text-muted)">ID LYV de usuario: <b>${lyvManualEscape(r.lyv_user_id||'—')}</b></div><div style="font-size:.7rem;color:var(--text-muted)">${lyvManualEscape(date)}</div><div style="font-size:.7rem;color:${color};font-weight:bold">${text}</div>${r.admin_note?`<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">📝 ${lyvManualEscape(r.admin_note)}</div>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="verComprobanteReal('${r.id}')">📷 Ver foto</button>`:''}${st==='PENDING'?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="aprobarRecargaRealAdmin('${r.id}')">✓ Aprobar</button><button class="btn-action" style="width:auto;padding:7px 9px;background:rgba(185,74,82,.25);color:#ff9a9a;box-shadow:none" onclick="rechazarRecargaRealAdmin('${r.id}')">✕ Rechazar</button>`:''}</div></div>`;}).join('');
+    c.innerHTML=arr.map(r=>{const st=String(r.status||'PENDING').toUpperCase(),color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107',text=st==='COMPLETED'?'COMPLETADA':st==='REJECTED'?'RECHAZADA':'PENDIENTE',date=r.created_at?new Date(r.created_at).toLocaleString('es-MX'):'—';return `<div class="admin-row" style="margin-top:8px;align-items:flex-start;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><b>🔖 ${lyvManualEscape(r.payment_code||'SIN CÓDIGO')}</b><div style="font-size:.72rem;color:var(--text-muted)">${lyvManualEscape(lyvManualMethodName(r.payment_method))} · ${Number(r.amount_mxn||0).toFixed(2)} MXN</div><div style="font-size:.72rem;color:var(--text-muted)">Concepto: <b>VENTA DIGITAL LYV STORE MX</b></div><div style="font-size:.72rem;color:var(--text-muted)">Código de pago: <b>${lyvManualEscape(r.payment_code||'—')}</b></div><div style="font-size:.72rem;color:var(--text-muted)">ID transferencia/folio: <b>${lyvManualEscape(r.transaction_id||'No enviado')}</b></div><div style="font-size:.7rem;color:var(--text-muted)">ID LYV de usuario: <b>${lyvManualEscape(r.lyv_user_id||'—')}</b></div><div style="font-size:.7rem;color:var(--text-muted)">${lyvManualEscape(date)}</div><div style="font-size:.7rem;color:${color};font-weight:bold">${text}</div>${r.admin_note?`<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">📝 ${lyvManualEscape(r.admin_note)}</div>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="verComprobanteReal('${r.id}')">📷 Ver foto</button>`:''}${st==='PENDING' && r.transaction_id && r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="aprobarRecargaRealAdmin('${r.id}')">✓ Aprobar</button><button class="btn-action" style="width:auto;padding:7px 9px;background:rgba(185,74,82,.25);color:#ff9a9a;box-shadow:none" onclick="rechazarRecargaRealAdmin('${r.id}')">✕ Rechazar</button>`:st==='PENDING'?`<div style="font-size:.68rem;color:#ffc107;padding:7px 9px;border:1px solid rgba(255,193,7,.25);border-radius:10px">⏳ Esperando folio y comprobante. Todavía no se puede aprobar ni rechazar.</div>`:''}</div></div>`;}).join('');
   }catch(e){console.error(e);c.innerHTML=`<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las recargas reales.<br><small>${lyvManualEscape(e?.message||e||'Error')}</small></div>`;}
 }
 function renderAdminPaymentReports(){cargarRecargasManualesAdmin();}
@@ -3793,198 +3823,9 @@ async function renderizarHistorialRecargasSafe(){
 window.addEventListener('load',()=>{
   const sel=document.getElementById('reportMetodo');
   if(sel)sel.innerHTML='<option value="binance">Binance USDT (GLOBAL)</option><option value="transferencia">Transferencia bancaria (México)</option><option value="oxxo">Depósito OXXO (México)</option>';
-  renderizarPaquetesRecarga();renderizarOpcionesPagoManual();renderizarDetalleMetodoPagoManual();renderAdminMetodosPago();cargarRecargasManualesAdmin();renderizarHistorialRecargasSafe();actualizarFormularioReportePago();
+  renderizarPaquetesRecarga();renderizarOpcionesPagoManual();renderizarDetalleMetodoPagoManual();renderAdminMetodosPago();cargarRecargasManualesAdmin();renderizarHistorialRecargasSafe();actualizarFormularioReportePago();setTimeout(lyvRestaurarRecargaPendiente,500);
 });
 
-</script>
-
-
-<script>
-/* =========================================================
-   LYV STORE MX — CORRECCIÓN FINAL DE FLUJO DE RECARGAS
-   - Recupera la solicitud pendiente al recargar la página.
-   - "Ver instrucciones" siempre abre instrucciones + botón YA HICE EL PAGO.
-   - El código LYV-PAGO-XXXX es el concepto; LYV-000X solo identifica al usuario.
-   - Admin solo puede aprobar/rechazar cuando hay folio + comprobante.
-   - NO modifica SixoFire / Clever.
-   ========================================================= */
-(function(){
-  function esc(v){return String(v??'').replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-  function current(){return window.lyvManualRechargeCurrent || window.__lyvManualRechargeCurrent || null;}
-  function setCurrent(r){window.lyvManualRechargeCurrent=r;window.__lyvManualRechargeCurrent=r;try{lyvManualRechargeCurrent=r;}catch(e){} }
-  function codeOf(r){return String(r?.payment_code||'').trim();}
-  function uidOf(r){return String(r?.lyv_user_id||window.lyvUserId||'No disponible').trim();}
-  function conceptOf(r){const c=codeOf(r);return c?'VENTA DIGITAL LYV STORE MX | '+c:'VENTA DIGITAL LYV STORE MX';}
-
-  function showValidationForm(){
-    const box=document.getElementById('lyvRechargeValidationBox') || document.querySelector('#view-billetera .card:nth-of-type(3)');
-    if(box){box.style.display='block';box.scrollIntoView({behavior:'smooth',block:'center'});}
-    const sel=document.getElementById('reportMetodo');
-    const r=current();
-    if(sel&&r?.payment_method) sel.value=r.payment_method;
-    if(typeof actualizarFormularioReportePago==='function') actualizarFormularioReportePago();
-  }
-
-  window.lyvAbrirInstrucciones=function(recharge){
-    const r=recharge||current();
-    if(!r?.id){alert('Primero genera una solicitud de recarga.');return;}
-    setCurrent(r);
-    const method=String(r.payment_method||'');
-    const code=codeOf(r);
-    const amount=Number(r.amount_mxn||0).toFixed(2);
-    const usd=(method==='binance' && typeof obtenerTotalUsd==='function') ? Number(obtenerTotalUsd(Number(r.amount_mxn)||0)||0) : null;
-    const total=method==='binance' && usd ? usd.toFixed(2)+' USDT' : '$'+amount+' MXN';
-    let instructions='';
-    if(method==='binance') instructions=`Envía <b>${esc(total)}</b> a Binance ID <b>1219826106</b>.<br>En la referencia/nota coloca: <b>${esc(code)}</b>`;
-    else if(method==='transferencia') instructions=`Realiza la transferencia a <b>Banco NU</b> · Cuenta <b>638180010160392066</b> · Titular <b>lyvstoremx</b>.<br>En el concepto coloca exactamente: <b>${esc(conceptOf(r))}</b>`;
-    else instructions=`Realiza tu depósito en <b>OXXO</b> a la cuenta <b>5101258632948312</b> · Banco NU · Titular <b>Erick Muñoz</b>.<br>Conserva el folio del ticket. El código de pago es <b>${esc(code)}</b>`;
-    abrirModal(`<div style="text-align:left">
-      <div style="font-size:2rem;text-align:center">💳</div>
-      <h3 style="text-align:center;margin:6px 0 12px">Instrucciones de pago</h3>
-      <div style="background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);border-radius:14px;padding:13px;font-size:.78rem;line-height:1.55;margin-bottom:12px">
-        <b>⚠️ IMPORTANTE</b><br>
-        Debes colocar el <b>código de pago de esta solicitud</b> en el concepto/nota cuando el método lo permita.<br>
-        Si el concepto o código no coincide, <b>la recarga puede ser rechazada o tardar más en validarse.</b>
-      </div>
-      <div style="font-size:.8rem;line-height:1.65;background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:14px;padding:13px">
-        <b>Usuario:</b> ${esc(uidOf(r))}<br>
-        <b>Código de pago:</b> ${esc(code)}<br>
-        <b>Concepto:</b> ${esc(conceptOf(r))}<br>
-        <b>Total:</b> ${esc(total)}<br><br>
-        ${instructions}
-      </div>
-      <div class="modal-actions" style="flex-direction:column">
-        <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff" onclick="window.lyvConfirmarPagoDesdeInstrucciones()">✓ YA HICE EL PAGO</button>
-        <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button>
-      </div>
-    </div>`);
-  };
-
-  window.lyvConfirmarPagoDesdeInstrucciones=function(){
-    const r=current();
-    if(!r?.id){alert('Primero genera una solicitud de recarga.');return;}
-    cerrarModal();
-    showValidationForm();
-    const tx=document.getElementById('reportTxId');
-    if(tx) setTimeout(()=>tx.focus(),350);
-  };
-
-  async function recuperarPendiente(){
-    try{
-      if(!usuarioActual)return;
-      const {data:{user},error}=await lyvSupabase.auth.getUser();
-      if(error||!user)return;
-      const q=await lyvSupabase.from('lyv_manual_recharges').select('*').eq('user_id',user.id).eq('status','PENDING').order('created_at',{ascending:false}).limit(1);
-      if(q.error)throw q.error;
-      const r=q.data?.[0];
-      if(r){setCurrent(r); if(typeof referenciaPagoActual!=='undefined') referenciaPagoActual=codeOf(r);}
-    }catch(e){console.warn('No se pudo recuperar recarga pendiente',e);}
-  }
-  window.lyvRecuperarRecargaPendiente=recuperarPendiente;
-
-  // Reemplaza la creación para que el resultado tenga SIEMPRE el botón de instrucciones funcional.
-  const oldCreate=window.lyvCrearRecargaManualReal;
-  window.lyvCrearRecargaManualReal=async function(){
-    if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
-    if(!LYV_MANUAL_PAYMENT_STATE[metodoPagoElegido]){alert('Ese método de pago no está disponible.');return;}
-    const usd=Number(paqueteRecargaElegido), amountMxn=Number(obtenerTotalMxn(usd)||0);
-    if(!PAQUETES_RECARGA.includes(usd)||amountMxn<=0){alert('Selecciona un paquete válido.');return;}
-    try{
-      const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
-      if(userError||!user)throw userError||new Error('Sesión no encontrada.');
-      const {data,error}=await lyvSupabase.rpc('lyv_create_manual_recharge',{p_amount_mxn:amountMxn,p_payment_method:metodoPagoElegido});
-      if(error)throw error;
-      const row=Array.isArray(data)?data[0]:data;
-      if(!row)throw new Error('Supabase no devolvió la solicitud de recarga.');
-      setCurrent(row);
-      if(typeof referenciaPagoActual!=='undefined') referenciaPagoActual=codeOf(row);
-      renderizarDetalleMetodoPagoManual();
-      abrirModal(`<div style="text-align:center">
-        <div style="font-size:2.4rem">⏳</div><h3 style="margin:8px 0">Solicitud de recarga creada</h3>
-        <div style="text-align:left;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);border-radius:14px;padding:13px;font-size:.78rem;line-height:1.55;margin:12px 0">
-          <b>⚠️ MUY IMPORTANTE</b><br>Usa exactamente este código en el concepto/nota cuando el método lo permita. Si no lo colocas o no coincide, <b>la recarga puede ser rechazada o tardar más en validarse.</b>
-        </div>
-        <p style="font-size:.82rem;line-height:1.7;margin:10px 0">
-          <b>Estado:</b> <span style="color:#ffc107">PENDIENTE</span><br>
-          <b>Código de pago:</b> ${esc(codeOf(row))}<br>
-          <b>Tu ID:</b> ${esc(uidOf(row))}<br>
-          <b>Concepto:</b> ${esc(conceptOf(row))}<br>
-          <b>Total:</b> ${esc(metodoPagoElegido==='binance'?usd.toFixed(2)+' USDT':'$'+amountMxn.toFixed(2)+' MXN')}
-        </p>
-        <div class="modal-actions" style="flex-direction:column">
-          <button class="btn-action" style="background:linear-gradient(135deg,#ff5b63,#d94a52);color:#fff" onclick="window.lyvAbrirInstrucciones()">Ver instrucciones de pago</button>
-          <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button>
-        </div>
-      </div>`);
-      renderizarHistorialRecargasSafe();
-    }catch(e){console.error('lyv_create_manual_recharge',e);alert('No se pudo crear la recarga real: '+String(e?.message||e||'Error'));}
-  };
-  window.ejecutarRecarga=window.lyvCrearRecargaManualReal;
-
-  // Recuperar solicitud después de login/carga.
-  const oldCambiarVista=window.cambiarVista;
-  if(typeof oldCambiarVista==='function'){
-    window.cambiarVista=function(v){const out=oldCambiarVista.apply(this,arguments);if(v==='billetera')setTimeout(recuperarPendiente,150);return out;};
-  }
-  window.addEventListener('load',()=>setTimeout(recuperarPendiente,700));
-
-  // El formulario inferior también funciona, pero exige la confirmación de "YA HICE EL PAGO".
-  const oldEnviar=window.enviarReportePago;
-  window.enviarReportePago=async function(){
-    const r=current();
-    if(!r?.id){await recuperarPendiente();}
-    const rr=current();
-    if(!rr?.id){alert('Primero genera una solicitud de recarga.');return;}
-    const metodo=document.getElementById('reportMetodo')?.value,txId=document.getElementById('reportTxId')?.value.trim(),archivo=document.getElementById('reportComprobante')?.files?.[0];
-    if(metodo!==rr.payment_method){alert('El método del comprobante no coincide con la solicitud.');return;}
-    if(!txId){alert('Ingresa el ID de transacción, referencia o folio.');return;}
-    if(!archivo){alert('Debes subir la foto del comprobante.');return;}
-    if(archivo.size>20*1024*1024){alert('La imagen original no puede superar 20 MB.');return;}
-    if(!confirm('Confirma que YA REALIZASTE EL PAGO de esta solicitud y que el folio y comprobante corresponden a este código de pago.'))return;
-    try{
-      const {data:{user},error:userError}=await lyvSupabase.auth.getUser();if(userError||!user)throw userError||new Error('Sesión no encontrada.');
-      const receiptData=await lyvResizeReceipt(archivo);
-      const {error}=await lyvSupabase.from('lyv_manual_recharges').update({transaction_id:txId,receipt_url:receiptData,receipt_name:archivo.name}).eq('id',rr.id).eq('user_id',user.id).eq('status','PENDING');
-      if(error)throw error;
-      alert('✅ Comprobante enviado. Tu recarga queda PENDIENTE DE VALIDACIÓN.');
-      setCurrent({...rr,transaction_id:txId,receipt_url:receiptData,receipt_name:archivo.name});
-      document.getElementById('reportTxId').value='';document.getElementById('reportComprobante').value='';
-      if(typeof renderizarHistorialRecargasSafe==='function')await renderizarHistorialRecargasSafe();
-      if(typeof cargarRecargasManualesAdmin==='function')await cargarRecargasManualesAdmin();
-    }catch(e){alert('No se pudo guardar el comprobante: '+String(e?.message||e||'Error'));}
-  };
-
-  // Admin: aprobar/rechazar SOLO cuando existen folio + comprobante.
-  const oldAdmin=window.cargarRecargasManualesAdmin;
-  window.cargarRecargasManualesAdmin=async function(){
-    const c=document.getElementById('adminPaymentReports');if(!c)return;
-    c.innerHTML='<div style="padding:10px;text-align:center;color:var(--text-muted)">⏳ Cargando recargas pendientes...</div>';
-    try{
-      const {data,error}=await lyvSupabase.rpc('lyv_admin_list_manual_recharges');if(error)throw error;
-      const arr=(Array.isArray(data)?data:[]).filter(r=>String(r.status||'PENDING').toUpperCase()==='PENDING');
-      if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay recargas pendientes.</div>';return;}
-      c.innerHTML=arr.map(r=>{
-        const hasProof=!!String(r.receipt_url||'').trim() && !!String(r.transaction_id||'').trim();
-        return `<div class="admin-row" style="margin-top:8px;align-items:flex-start;gap:8px;flex-wrap:wrap">
-          <div style="flex:1;min-width:240px">
-            <b>🔖 ${esc(r.payment_code||'SIN CÓDIGO')}</b>
-            <div style="font-size:.72rem;color:var(--text-muted)">${esc(lyvManualMethodName(r.payment_method))} · ${Number(r.amount_mxn||0).toFixed(2)} MXN</div>
-            <div style="font-size:.72rem;color:var(--text-muted)">Concepto: <b>${esc(conceptOf(r))}</b></div>
-            <div style="font-size:.72rem;color:var(--text-muted)">Folio/ID: <b>${esc(r.transaction_id||'No enviado')}</b></div>
-            <div style="font-size:.7rem;color:var(--text-muted)">ID de usuario: <b>${esc(r.lyv_user_id||'—')}</b></div>
-            <div style="font-size:.7rem;color:#ffc107;font-weight:bold">PENDIENTE</div>
-            ${hasProof?'':'<div style="font-size:.72rem;color:#ffc107;margin-top:5px">⏳ Esperando folio y comprobante. Todavía no se puede aprobar ni rechazar.</div>'}
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="verComprobanteReal('${r.id}')">📷 Ver foto</button>`:''}
-            ${hasProof?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="aprobarRecargaRealAdmin('${r.id}')">✓ Aprobar</button><button class="btn-action" style="width:auto;padding:7px 9px;background:rgba(185,74,82,.25);color:#ff9a9a;box-shadow:none" onclick="rechazarRecargaRealAdmin('${r.id}')">✕ Rechazar</button>`:''}
-          </div>
-        </div>`;
-      }).join('');
-    }catch(e){c.innerHTML='<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las recargas pendientes.<br><small>'+esc(e?.message||e||'Error')+'</small></div>';}
-  };
-  window.renderAdminPaymentReports=window.cargarRecargasManualesAdmin;
-})();
 </script>
 
 </body>
