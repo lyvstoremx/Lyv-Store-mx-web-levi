@@ -852,7 +852,7 @@
                 <div id="detalleMetodoPagoContainer" style="margin-top:10px;"></div>
 
                 <button class="btn-action" style="margin-top: 10px; background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="ejecutarRecarga()">Generar solicitud de pago</button>
-                <div style="font-size:.68rem;color:var(--text-muted);margin-top:8px;text-align:center;">Binance se paga en USDT. Mercado Pago y OXXO muestran el total en MXN.</div>
+                <div style="font-size:.68rem;color:var(--text-muted);margin-top:8px;text-align:center;">Binance se paga en USDT. Transferencia bancaria y OXXO muestran el total en MXN.</div>
             </div>
 
             <!-- CONTENEDOR DE COMPROBANTE SEGURO -->
@@ -1008,14 +1008,14 @@
             <!-- GESTIÓN DE MÉTODOS DE PAGO -->
             <div class="card">
                 <div class="card-title" style="color: var(--accent-blue);">💳 Métodos de pago</div>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Activa o desactiva Binance, Mercado Pago y OXXO cuando no estén disponibles. Se pedirá confirmación antes de desactivar.</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Activa o desactiva Binance, Transferencia bancaria y OXXO cuando no estén disponibles. Se pedirá confirmación antes de desactivar.</p>
                 <div id="adminMetodosPago"></div>
             </div>
 
             <!-- REVISION MANUAL DE OXXO -->
             <div class="card">
                 <div class="card-title" style="color: var(--accent-blue);">🧾 Comprobantes OXXO / Reportes</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;">Los pagos OXXO quedan pendientes hasta que tú revises el comprobante. Binance y Mercado Pago se preparan para confirmación automática por backend/webhook.</p>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;">Las recargas manuales quedan PENDIENTES hasta que tú revises y apruebes el comprobante. Binance, Transferencia bancaria y OXXO usan revisión administrativa.</p>
                 <div id="adminPaymentReports"></div>
             </div>
 
@@ -3493,6 +3493,411 @@ async function cargarTop5Recargas(){
   <h3>🏆 Top 5 — usuarios que más recargan</h3>
   <div id="lyvTop5RecargasContenido" class="lyv-top-empty">Aún no hay recargas registradas.</div>
 </section>
+<script>
+/* =========================================================
+   LYV STORE MX — RECARGAS MANUALES REALES
+   Esta capa reemplaza la lógica visual/local de recargas.
+   SixoFire y las compras NO se modifican.
+   ========================================================= */
+
+const LYV_MANUAL_PAYMENT_METHODS = {
+  binance: { nombre:'Binance (USDT)', logo:'https://cdn-icons-png.flaticon.com/512/825/825260.png' },
+  transferencia: { nombre:'Transferencia bancaria', logo:'' },
+  oxxo: { nombre:'OXXO', logo:'https://cdn-icons-png.flaticon.com/512/2885/2885435.png' }
+};
+
+/* Disponibilidad local del administrador. Binance/transferencia/OXXO son manuales. */
+const LYV_MANUAL_PAYMENT_STATE = Object.assign(
+  {binance:true, transferencia:true, oxxo:true},
+  (()=>{try{return JSON.parse(localStorage.getItem('lyv_estado_metodos_pago_manual')||'{}')||{};}catch(e){return {};}})()
+);
+
+let lyvManualRechargeCurrent = null;
+
+function lyvManualMethodName(k){
+  return LYV_MANUAL_PAYMENT_METHODS[k]?.nombre || k || 'Método';
+}
+
+function lyvManualEscape(v){
+  return String(v ?? '').replace(/[&<>\'"]/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  }[c]));
+}
+
+function renderAdminMetodosPago(){
+  const c=document.getElementById('adminMetodosPago');
+  if(!c)return;
+  c.innerHTML=Object.entries(LYV_MANUAL_PAYMENT_METHODS).map(([key,m])=>{
+    const activo=LYV_MANUAL_PAYMENT_STATE[key]!==false;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--card-border);border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,.02)">
+      <div style="display:flex;align-items:center;gap:9px">
+        ${m.logo?`<img src="${m.logo}" style="width:30px;height:30px;object-fit:contain">`:'<div style="width:30px;height:30px;display:grid;place-items:center;font-size:18px">🏦</div>'}
+        <div><b>${lyvManualEscape(m.nombre)}</b><div style="font-size:.7rem;color:${activo?'#6ee7a0':'#ff8b8b'}">${activo?'Disponible':'Desactivado'}</div></div>
+      </div>
+      <button class="btn-action" style="width:auto;padding:7px 10px;${activo?'background:linear-gradient(135deg,#b94a52,#963b43)':''}" onclick="confirmarCambioMetodoPagoManual('${key}')">${activo?'Desactivar':'Activar'}</button>
+    </div>`;
+  }).join('');
+}
+
+function confirmarCambioMetodoPagoManual(key){
+  const metodo=LYV_MANUAL_PAYMENT_METHODS[key];
+  if(!metodo)return;
+  const accion=LYV_MANUAL_PAYMENT_STATE[key]!==false?'desactivar':'activar';
+  if(!confirm(`¿Seguro que quieres ${accion} ${metodo.nombre}?`))return;
+  LYV_MANUAL_PAYMENT_STATE[key]=!LYV_MANUAL_PAYMENT_STATE[key];
+  try{localStorage.setItem('lyv_estado_metodos_pago_manual',JSON.stringify(LYV_MANUAL_PAYMENT_STATE));}catch(e){}
+  renderAdminMetodosPago();
+  renderizarOpcionesPagoManual();
+  renderizarDetalleMetodoPagoManual();
+  alert(`${metodo.nombre} ${LYV_MANUAL_PAYMENT_STATE[key]?'activado':'desactivado'}.`);
+}
+
+function renderizarPaquetesRecarga(){
+  const c=document.getElementById('paquetesRecargaContainer');
+  if(!c)return;
+  c.innerHTML=PAQUETES_RECARGA.map(v=>`<button type="button" class="metodo-pago-item ${v===paqueteRecargaElegido?'selected':''}" style="border:1px solid var(--card-border);background:${v===paqueteRecargaElegido?'rgba(255,91,99,.10)':'rgba(255,255,255,.02)'};padding:10px;min-width:78px;" onclick="seleccionarPaqueteRecargaManual(${v})"><b>$${v}</b><div style="font-size:.65rem;color:var(--text-muted)">USD</div></button>`).join('');
+  const input=document.getElementById('montoRecarga');
+  if(input)input.value=String(paqueteRecargaElegido);
+}
+
+function seleccionarPaqueteRecargaManual(valor){
+  if(!PAQUETES_RECARGA.includes(Number(valor)))return;
+  paqueteRecargaElegido=Number(valor);
+  referenciaPagoActual=null;
+  renderizarPaquetesRecarga();
+  renderizarDetalleMetodoPagoManual();
+}
+
+function generarOpcionesPagoHTML(){
+  return renderizarOpcionesPagoManual(true);
+}
+
+function renderizarOpcionesPagoManual(returnHtml=false){
+  const activos=Object.keys(LYV_MANUAL_PAYMENT_METHODS).filter(k=>LYV_MANUAL_PAYMENT_STATE[k]!==false);
+  if(!activos.length){
+    metodoPagoElegido=null;
+    const html='<div style="font-size:.78rem;color:#ff8b8b;padding:10px 0">No hay métodos de pago disponibles en este momento.</div>';
+    if(!returnHtml){const c=document.getElementById('selectorMetodosPagoContainer');if(c)c.innerHTML=html;}
+    return html;
+  }
+  if(!activos.includes(metodoPagoElegido))metodoPagoElegido=activos[0];
+  const html=activos.map(key=>{
+    const m=LYV_MANUAL_PAYMENT_METHODS[key];
+    const selected=key===metodoPagoElegido;
+    return `<button type="button" class="metodo-pago-item ${selected?'selected':''}" style="display:flex;align-items:center;gap:9px;width:100%;border:1px solid ${selected?'rgba(255,91,99,.55)':'var(--card-border)'};background:${selected?'rgba(255,91,99,.08)':'rgba(255,255,255,.02)'};padding:11px;margin-bottom:7px;text-align:left" onclick="seleccionarMetodoPagoManual('${key}')">
+      ${m.logo?`<img src="${m.logo}" style="width:28px;height:28px;object-fit:contain">`:'<span style="font-size:20px">🏦</span>'}
+      <span><b>${lyvManualEscape(m.nombre)}</b><small style="display:block;color:var(--text-muted);font-size:.65rem">Pago manual · revisión administrativa</small></span>
+    </button>`;
+  }).join('');
+  if(!returnHtml){const c=document.getElementById('selectorMetodosPagoContainer');if(c)c.innerHTML=html;}
+  return html;
+}
+
+function seleccionarMetodoPagoManual(metodo){
+  if(!LYV_MANUAL_PAYMENT_STATE[metodo])return;
+  metodoPagoElegido=metodo;
+  referenciaPagoActual=null;
+  const c=document.getElementById('selectorMetodosPagoContainer');
+  if(c)c.innerHTML=renderizarOpcionesPagoManual(true);
+  renderizarDetalleMetodoPagoManual();
+}
+
+function renderizarDetalleMetodoPago(){renderizarDetalleMetodoPagoManual();}
+
+function renderizarDetalleMetodoPagoManual(){
+  const c=document.getElementById('detalleMetodoPagoContainer');
+  if(!c)return;
+  const usd=Number(paqueteRecargaElegido||0);
+  const mxn=Number(obtenerTotalMxn(usd)||0);
+
+  if(metodoPagoElegido==='binance'){
+    const codigo=referenciaPagoActual || generarCodigoNotaBinance();
+    referenciaPagoActual=codigo;
+    c.innerHTML=`<div class="order-item" style="border:1px solid rgba(255,193,7,.25)">
+      <b>Binance — pago en USDT</b>
+      <div style="font-size:.76rem;margin-top:6px">Paquete: <b>$${usd.toFixed(2)} USD</b></div>
+      <div style="font-size:.76rem">Total: <b>${usd.toFixed(2)} USDT</b></div>
+      <div style="font-size:.76rem">ID Binance destino: <b>${lyvManualEscape(BINANCE_DESTINO_ID)}</b></div>
+      <div style="font-size:.76rem">Código para la nota: <b>${lyvManualEscape(codigo)}</b></div>
+      <div style="margin-top:9px;padding:10px;border-radius:12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);font-size:.72rem;line-height:1.45">⚠️ Envía exactamente <b>USDT</b>. Guarda el ID de transacción y después envíalo junto con tu comprobante.</div>
+    </div>`;
+  }else if(metodoPagoElegido==='transferencia'){
+    c.innerHTML=`<div class="order-item" style="border:1px solid rgba(110,231,160,.22)">
+      <b>Transferencia bancaria</b>
+      <div style="font-size:.76rem;margin-top:6px">Paquete: <b>$${usd.toFixed(2)} USD</b></div>
+      <div style="font-size:1.05rem;margin-top:5px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">Realiza la transferencia a los datos bancarios configurados por el administrador. Conserva tu comprobante.</div>
+    </div>`;
+  }else if(metodoPagoElegido==='oxxo'){
+    c.innerHTML=`<div class="order-item" style="border:1px solid rgba(255,193,7,.22)">
+      <b>OXXO — pago manual</b>
+      <div style="font-size:.76rem;margin-top:6px">Paquete: <b>$${usd.toFixed(2)} USD</b></div>
+      <div style="font-size:1.12rem;margin-top:5px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">Realiza el depósito y después envía el folio y la foto del comprobante. El saldo queda pendiente hasta la aprobación del administrador.</div>
+    </div>`;
+  }else c.innerHTML='';
+}
+
+async function lyvCrearRecargaManualReal(){
+  if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
+  if(!LYV_MANUAL_PAYMENT_STATE[metodoPagoElegido]){alert('Ese método de pago no está disponible.');return;}
+
+  const usd=Number(paqueteRecargaElegido);
+  const amountMxn=Number(obtenerTotalMxn(usd)||0);
+  if(!PAQUETES_RECARGA.includes(usd)||amountMxn<=0){alert('Selecciona un paquete válido.');return;}
+
+  try{
+    const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
+    if(userError||!user)throw userError||new Error('Sesión no encontrada.');
+
+    let data,error;
+    ({data,error}=await lyvSupabase.rpc('lyv_create_manual_recharge',{
+      p_amount_mxn: amountMxn,
+      p_payment_method: metodoPagoElegido
+    }));
+    if(error)throw error;
+
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row)throw new Error('Supabase no devolvió la solicitud de recarga.');
+
+    lyvManualRechargeCurrent=row;
+    window.lyvManualRechargeCurrent=row;
+
+    const code=row.payment_code||'PENDIENTE';
+    const paymentId=row.id;
+    referenciaPagoActual=code;
+
+    abrirModal(`<div style="text-align:center">
+      <div style="font-size:2.4rem">⏳</div>
+      <h3 style="margin:8px 0">Solicitud creada</h3>
+      <p style="font-size:.8rem;color:var(--text-muted);line-height:1.55;margin:10px 0">
+        Tu recarga quedó <b style="color:#ffc107">PENDIENTE</b>.<br>
+        Código de recarga: <b>${lyvManualEscape(code)}</b><br>
+        Total: <b>$${amountMxn.toFixed(2)} MXN</b>
+      </p>
+      <p style="font-size:.72rem;color:var(--text-muted)">Ahora realiza el pago y usa la sección de comprobante para enviar el ID/folio y la imagen.</p>
+      <div class="modal-actions">
+        <button class="btn-action" onclick="cerrarModal();cambiarVista('billetera');">Continuar</button>
+        <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cerrar</button>
+      </div>
+    </div>`);
+
+    renderizarHistorialRecargasSafe();
+    lyvLog('RECARGA REAL',`${code} · ${lyvManualMethodName(metodoPagoElegido)} · $${amountMxn.toFixed(2)} MXN`);
+  }catch(e){
+    console.error('lyv_create_manual_recharge',e);
+    alert('No se pudo crear la recarga real: '+String(e?.message||e||'Error'));
+  }
+}
+
+function ejecutarRecarga(){lyvCrearRecargaManualReal();}
+
+function actualizarFormularioReportePago(){
+  const metodo=document.getElementById('reportMetodo')?.value;
+  const tx=document.getElementById('reportTxId');
+  const archivo=document.getElementById('reportComprobante');
+  if(tx)tx.placeholder=metodo==='oxxo'?'Folio OXXO / referencia':metodo==='binance'?'ID de transacción Binance':'Referencia de transferencia';
+  if(archivo)archivo.required=metodo==='oxxo';
+}
+
+function lyvResizeReceipt(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=1400;
+        const scale=Math.min(1,max/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*scale));
+        const h=Math.max(1,Math.round(img.height*scale));
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',.72));
+      };
+      img.onerror=reject;
+      img.src=fr.result;
+    };
+    fr.onerror=reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+async function enviarReportePago(){
+  if(!usuarioActual){alert('Inicia sesión para enviar el comprobante.');return;}
+  const metodo=document.getElementById('reportMetodo')?.value;
+  const txId=document.getElementById('reportTxId')?.value.trim()||null;
+  const archivo=document.getElementById('reportComprobante')?.files?.[0]||null;
+  const recharge=window.lyvManualRechargeCurrent||lyvManualRechargeCurrent;
+
+  if(!recharge?.id){
+    alert('Primero genera una solicitud de recarga con el botón “Generar solicitud de pago”.');
+    return;
+  }
+  if(metodo!==recharge.payment_method){
+    alert('El método del comprobante no coincide con la solicitud de recarga actual.');
+    return;
+  }
+  if(!txId && metodo!=='oxxo'){
+    alert('Ingresa el ID de transacción o referencia.');return;
+  }
+  if(metodo==='oxxo'&&!archivo){
+    alert('Para OXXO debes subir la foto del comprobante.');return;
+  }
+  if(archivo && archivo.size>8*1024*1024){
+    alert('La imagen original no puede superar 8 MB.');return;
+  }
+
+  try{
+    const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
+    if(userError||!user)throw userError||new Error('Sesión no encontrada.');
+
+    let receiptData=null;
+    if(archivo)receiptData=await lyvResizeReceipt(archivo);
+
+    const patch={
+      transaction_id:txId,
+      receipt_url:receiptData,
+      receipt_name:archivo?.name||null
+    };
+
+    const {error:updateError}=await lyvSupabase
+      .from('lyv_manual_recharges')
+      .update(patch)
+      .eq('id',recharge.id)
+      .eq('user_id',user.id)
+      .eq('status','PENDING');
+
+    if(updateError)throw updateError;
+
+    alert('✅ Comprobante enviado correctamente. Tu recarga sigue PENDIENTE hasta que el administrador la revise.');
+    const tx=document.getElementById('reportTxId');if(tx)tx.value='';
+    const f=document.getElementById('reportComprobante');if(f)f.value='';
+    renderizarHistorialRecargasSafe();
+  }catch(e){
+    console.error('Error enviando comprobante',e);
+    alert('No se pudo guardar el comprobante en Supabase: '+String(e?.message||e||'Error'));
+  }
+}
+
+async function cargarRecargasManualesAdmin(){
+  const c=document.getElementById('adminPaymentReports');
+  if(!c)return;
+  c.innerHTML='<div style="padding:10px;text-align:center;color:var(--text-muted)">⏳ Cargando recargas reales...</div>';
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_list_manual_recharges');
+    if(error)throw error;
+    const arr=Array.isArray(data)?data:[];
+    if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:8px">No hay recargas registradas.</div>';return;}
+    c.innerHTML=arr.map(r=>{
+      const st=String(r.status||'PENDING').toUpperCase();
+      const color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107';
+      const text=st==='COMPLETED'?'COMPLETADA':st==='REJECTED'?'RECHAZADA':'PENDIENTE';
+      const date=r.created_at?new Date(r.created_at).toLocaleString('es-MX'):'—';
+      return `<div class="admin-row" style="margin-top:8px;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <b>${lyvManualEscape(r.payment_code||'SIN CÓDIGO')}</b>
+          <div style="font-size:.72rem;color:var(--text-muted)">${lyvManualEscape(lyvManualMethodName(r.payment_method))} · $${Number(r.amount_mxn||0).toFixed(2)} MXN</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">ID transferencia: <b>${lyvManualEscape(r.transaction_id||'No enviado')}</b></div>
+          <div style="font-size:.7rem;color:var(--text-muted)">Usuario: ${lyvManualEscape(r.lyv_user_id||r.user_id||'—')}</div>
+          <div style="font-size:.7rem;color:var(--text-muted)">${lyvManualEscape(date)}</div>
+          <div style="font-size:.7rem;color:${color};font-weight:bold">${text}</div>
+          ${r.admin_note?`<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">📝 ${lyvManualEscape(r.admin_note)}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="verComprobanteReal('${r.id}')">📷 Ver imagen</button>`:''}
+          ${st==='PENDING'?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="aprobarRecargaRealAdmin('${r.id}')">✓ Aprobar</button><button class="btn-action" style="width:auto;padding:7px 9px;background:rgba(185,74,82,.25);color:#ff9a9a;box-shadow:none" onclick="rechazarRecargaRealAdmin('${r.id}')">✕ Rechazar</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    c.innerHTML=`<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las recargas reales.<br><small>${lyvManualEscape(e?.message||e||'Error')}</small></div>`;
+  }
+}
+
+function renderAdminPaymentReports(){cargarRecargasManualesAdmin();}
+
+function verComprobanteReal(id){
+  cargarRecargasManualesAdminDataForView(id);
+}
+
+async function cargarRecargasManualesAdminDataForView(id){
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_list_manual_recharges');
+    if(error)throw error;
+    const r=(data||[]).find(x=>x.id===id);
+    if(!r?.receipt_url){alert('Esta recarga no tiene imagen.');return;}
+    abrirModal(`<div class="card-title" style="color:var(--accent-blue)">🧾 Comprobante ${lyvManualEscape(r.payment_code||'')}</div><img src="${r.receipt_url}" alt="Comprobante" style="display:block;width:100%;max-height:65vh;object-fit:contain;border-radius:12px;border:1px solid var(--card-border);background:#050508"><div class="modal-actions"><button class="btn-action" onclick="cerrarModal()">Cerrar</button></div>`);
+  }catch(e){alert('No se pudo abrir el comprobante: '+String(e?.message||e||'Error'));}
+}
+
+async function aprobarRecargaRealAdmin(rechargeId){
+  if(!confirm('¿Seguro que quieres APROBAR esta recarga?\n\nEl saldo se acreditará al usuario.\nLa protección del backend evita acreditar dos veces.'))return;
+  const nota=prompt('Nota administrativa (opcional):','Pago verificado correctamente.');
+  if(nota===null)return;
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_approve_manual_recharge',{p_recharge_id:rechargeId,p_admin_note:nota||null});
+    if(error)throw error;
+    if(data?.already_completed===true)alert('⚠️ Esta recarga ya estaba completada. No se volvió a acreditar.');
+    else alert('✅ Recarga aprobada y saldo acreditado.');
+    await cargarRecargasManualesAdmin();
+  }catch(e){alert('No se pudo aprobar: '+String(e?.message||e||'Error'));}
+}
+
+async function rechazarRecargaRealAdmin(rechargeId){
+  const motivo=prompt('Motivo del rechazo:','Pago no localizado o comprobante no válido.');
+  if(motivo===null)return;
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_reject_manual_recharge',{p_recharge_id:rechargeId,p_admin_note:motivo||null});
+    if(error)throw error;
+    alert(data?.already_rejected===true?'Esta recarga ya estaba rechazada.':'❌ Recarga rechazada correctamente.');
+    await cargarRecargasManualesAdmin();
+  }catch(e){alert('No se pudo rechazar: '+String(e?.message||e||'Error'));}
+}
+
+async function renderizarHistorialRecargasSafe(){
+  const c=document.getElementById('listaHistorialRecargas');
+  if(!c)return;
+  if(!usuarioActual){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">Inicia sesión para ver tus recargas.</div>';return;}
+  try{
+    const {data:{user},error:userError}=await lyvSupabase.auth.getUser();
+    if(userError||!user)throw userError||new Error('Sesión no encontrada.');
+    const {data,error}=await lyvSupabase.from('lyv_manual_recharges').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+    if(error)throw error;
+    const arr=data||[];
+    c.innerHTML=arr.length?arr.map(r=>{
+      const st=String(r.status||'PENDING');
+      const color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107';
+      const text=st==='COMPLETED'?'Completada':st==='REJECTED'?'Rechazada':'Pendiente';
+      return `<div class="order-item"><div class="order-header"><span>Recarga $${Number(r.amount_mxn||0).toFixed(2)} MXN</span><span style="color:${color};font-weight:bold">${text}</span></div><div style="font-size:.72rem;color:var(--text-muted)">${lyvManualEscape(r.payment_code||'')} · ${lyvManualEscape(lyvManualMethodName(r.payment_method))}${r.transaction_id?' · ID: '+lyvManualEscape(r.transaction_id):''}</div></div>`;
+    }).join(''):'<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay recargas registradas.</div>';
+  }catch(e){
+    console.warn('Historial de recargas real:',e);
+    c.innerHTML='<div style="font-size:.82rem;color:#ff8b8b;text-align:center;padding:20px">No se pudo cargar el historial real de recargas.</div>';
+  }
+}
+
+/* Al cargar, mantenemos todo lo demás del HTML y solo reemplazamos el módulo de pagos. */
+window.addEventListener('load',()=>{
+  try{
+    const old=JSON.parse(localStorage.getItem('lyv_estado_metodos_pago')||'{}')||{};
+    if(old.binance!==undefined)LYV_MANUAL_PAYMENT_STATE.binance=old.binance;
+    if(old.oxxo!==undefined)LYV_MANUAL_PAYMENT_STATE.oxxo=old.oxxo;
+  }catch(e){}
+  LYV_MANUAL_PAYMENT_STATE.mercadopago=false;
+  const sel=document.getElementById('reportMetodo');
+  if(sel){sel.innerHTML='<option value="binance">Binance (USDT)</option><option value="transferencia">Transferencia bancaria</option><option value="oxxo">OXXO</option>';}
+  renderizarPaquetesRecarga();
+  renderizarOpcionesPagoManual();
+  renderizarDetalleMetodoPagoManual();
+  renderAdminMetodosPago();
+  cargarRecargasManualesAdmin();
+  renderizarHistorialRecargasSafe();
+});
+</script>
+
 </body>
 </html>
 
