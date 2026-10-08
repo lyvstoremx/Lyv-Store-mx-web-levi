@@ -1937,33 +1937,6 @@ cargarImagenesProductosGuardadas();
 
             let perfil = null;
             let errorPerfil = null;
-
-            // Comprobación real de bloqueo mediante función SECURITY DEFINER.
-            // Así funciona aunque RLS impida leer directamente profiles.
-            const {data:estadoBloqueo,error:errorBloqueo}=await lyvSupabase.rpc('lyv_check_my_blocked_status');
-            if(errorBloqueo){
-                console.error('No se pudo verificar el estado de bloqueo:', errorBloqueo);
-                await lyvSupabase.auth.signOut();
-                usuarioActual = null;
-                throw new Error('No se pudo verificar tu cuenta. Inicia sesión nuevamente.');
-            }
-
-            if(estadoBloqueo === true){
-                await lyvSupabase.auth.signOut();
-                usuarioActual = null;
-                correoUsuario = '';
-                perfilNombreActual = '';
-                const h=document.getElementById('headerUserBtn');
-                if(h) h.innerText='INGRESAR';
-                const d=document.getElementById('drawerAuthBtn');
-                if(d) d.innerHTML='<span>🔐 Iniciar Sesión</span>';
-                const b=document.getElementById('catalogAuthBanner');
-                if(b) b.style.display='flex';
-                cambiarVista('login');
-                alert('🚫 Esta cuenta está bloqueada.');
-                return;
-            }
-
             try {
                 const {data,error}=await lyvSupabase.from('profiles').select('id,lyv_user_id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
                 if(error) throw error;
@@ -1971,6 +1944,12 @@ cargarImagenesProductosGuardadas();
             } catch(e) {
                 errorPerfil = e;
                 console.error('No se pudo cargar profiles:', e);
+            }
+
+            if(perfil?.is_blocked){
+                await lyvSupabase.auth.signOut();
+                usuarioActual = null;
+                throw new Error('Esta cuenta está bloqueada.');
             }
 
             correoUsuario = user.email || perfil?.email || correoUsuario;
@@ -2644,13 +2623,11 @@ async function cargarOrdenesReales(){
       }));
       window.lyvAllOrders=historialOrdenes.slice();
 
-      // Total gastado REAL: suma de las compras guardadas en Supabase.
-      gastoTotal = historialOrdenes
-        .filter(o=>o.tipo==='compra')
-        .reduce((total,o)=>total + Number(o.precio||0), 0);
-
-      totalOrdenesCount = historialOrdenes
-        .filter(o=>o.tipo==='compra').length;
+      // Estadísticas REALES y exclusivas del usuario autenticado.
+      const {data:misStats,error:statsError}=await lyvSupabase.rpc('lyv_get_my_stats');
+      if(statsError) throw statsError;
+      gastoTotal=Number(misStats?.total_spent||0);
+      totalOrdenesCount=Number(misStats?.orders_count||0);
 
       actualizarPanelesUsuario();
       renderizarHistorial();
@@ -2706,7 +2683,7 @@ async function sincronizarEstadosOrdenesReales(){
   }
 }
 
-function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=historialOrdenes.filter(o=>o.tipo!=='recarga').length;}
+function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=String(totalOrdenesCount||0);}
 
 function ejecutarRecarga(){
     if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
