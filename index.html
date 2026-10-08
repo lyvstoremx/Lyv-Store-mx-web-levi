@@ -686,6 +686,18 @@
                 <div id="liveSalesText">🟢 Cargando ventas en tiempo real...</div>
             </div>
 
+            <!-- INDICADORES PÚBLICOS DE CONFIANZA -->
+            <div id="lyvPublicTrust" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <div style="background:rgba(255,91,99,.06);border:1px solid rgba(255,91,99,.22);border-radius:14px;padding:11px;text-align:center;">
+                    <div style="font-size:1.05rem;">🛒</div>
+                    <div id="lyvPublicSalesCount" style="font-size:.82rem;font-weight:800;margin-top:3px;">Cargando ventas...</div>
+                </div>
+                <div style="background:rgba(255,213,74,.06);border:1px solid rgba(255,213,74,.22);border-radius:14px;padding:11px;text-align:center;">
+                    <div style="font-size:1.05rem;">⭐</div>
+                    <div id="lyvPublicRating" style="font-size:.82rem;font-weight:800;margin-top:3px;">Cargando valoración...</div>
+                </div>
+            </div>
+
             <!-- CATÁLOGO DINÁMICO -->
             <div class="card-title" style="margin-top: 5px;" data-i18n="catalogTitle">🔥 Catálogo Oficial Free Fire</div>
             <div class="products-grid" id="catalogoProductosGrid"></div>
@@ -2644,11 +2656,13 @@ async function cargarOrdenesReales(){
       }));
       window.lyvAllOrders=historialOrdenes.slice();
 
-      // Estadísticas REALES y exclusivas del usuario autenticado.
-      const {data:misStats,error:statsError}=await lyvSupabase.rpc('lyv_get_my_stats');
-      if(statsError) throw statsError;
-      gastoTotal=Number(misStats?.total_spent||0);
-      totalOrdenesCount=Number(misStats?.orders_count||0);
+      // Total gastado REAL: suma de las compras guardadas en Supabase.
+      gastoTotal = historialOrdenes
+        .filter(o=>o.tipo==='compra')
+        .reduce((total,o)=>total + Number(o.precio||0), 0);
+
+      totalOrdenesCount = historialOrdenes
+        .filter(o=>o.tipo==='compra').length;
 
       actualizarPanelesUsuario();
       renderizarHistorial();
@@ -2704,7 +2718,7 @@ async function sincronizarEstadosOrdenesReales(){
   }
 }
 
-function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=String(totalOrdenesCount||0);}
+function actualizarPanelesUsuario(){['dashSaldo','walletBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerText=`$${saldoActual.toFixed(2)} MXN`;});const g=document.getElementById('gastoTotal');if(g)g.innerText=`$${gastoTotal.toFixed(2)} MXN`;const t=document.getElementById('totalOrdenes');if(t)t.innerText=historialOrdenes.filter(o=>o.tipo!=='recarga').length;}
 
 function ejecutarRecarga(){
     if(!usuarioActual){alert('Inicia sesión para recargar saldo.');cambiarVista('login');return;}
@@ -2946,14 +2960,33 @@ async function cargarVentasEnTiempoReal(){
     if(error) throw error;
     const n=Number(data||0);
     if(el) el.innerHTML=`🟢 <b>${n.toLocaleString('es-MX')}</b> venta${n===1?'':'s'} registradas en tiempo real`;
+    const publicEl=document.getElementById('lyvPublicSalesCount');
+    if(publicEl) publicEl.innerHTML=`🛒 <b>${n.toLocaleString('es-MX')}</b> venta${n===1?'':'s'} registradas`;
   }catch(e){
     if(el) el.innerText='🟢 Pedidos procesados de forma segura.';
   }
 }
 function iniciarActualizacionVentasTiempoReal(){
   cargarVentasEnTiempoReal();
+  cargarCalificacionPublicaLyv();
   if(window.lyvSalesInterval) clearInterval(window.lyvSalesInterval);
-  window.lyvSalesInterval=setInterval(cargarVentasEnTiempoReal,10000);
+  window.lyvSalesInterval=setInterval(()=>{
+    cargarVentasEnTiempoReal();
+    cargarCalificacionPublicaLyv();
+  },10000);
+}
+
+async function cargarCalificacionPublicaLyv(){
+  const el=document.getElementById('lyvPublicRating');
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_get_store_rating');
+    if(error) throw error;
+    const avg=Number(data?.average_rating||0);
+    const count=Number(data?.rating_count||0);
+    if(el) el.innerHTML=count?`⭐ <b>${avg.toFixed(1)}/5</b> · ${count} valoración${count===1?'':'es'}`:'⭐ Sin valoraciones aún';
+  }catch(e){
+    if(el) el.innerText='⭐ Valoración no disponible';
+  }
 }
 async function quitarSaldoAdminVisual(){
   const target=String(document.getElementById('adminDebitoUsuarioId')?.value||'').trim();
