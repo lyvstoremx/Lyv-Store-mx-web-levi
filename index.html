@@ -613,6 +613,17 @@
         <div class="user-pill" id="headerUserBtn" onclick="manejoBotonHeaderUsuario()">Ingresar</div>
     </header>
 
+    <div id="lyvGlobalNotice" style="display:none;margin:10px 12px 0;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,193,7,.35);background:rgba(255,193,7,.08);box-shadow:0 8px 24px rgba(0,0,0,.18);">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div id="lyvGlobalNoticeIcon" style="font-size:1.25rem;line-height:1.2;">⚠️</div>
+            <div style="flex:1;min-width:0;">
+                <div id="lyvGlobalNoticeTitle" style="font-weight:900;font-size:.84rem;margin-bottom:3px;">Aviso importante</div>
+                <div id="lyvGlobalNoticeMessage" style="font-size:.76rem;line-height:1.5;color:var(--text-muted);white-space:pre-wrap;"></div>
+            </div>
+            <button type="button" onclick="lyvCerrarAvisoGlobal()" style="border:0;background:transparent;color:var(--text-muted);font-size:1.1rem;padding:2px 5px;cursor:pointer;">×</button>
+        </div>
+    </div>
+
     <!-- Menú Lateral -->
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
     <div class="drawer" id="drawer">
@@ -906,6 +917,27 @@
                 </div>
             </div>
 
+            <!-- AVISO GLOBAL PARA TODOS -->
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">📢 Aviso para todos los usuarios</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Publica un aviso visible para todos. Solo habrá un aviso activo a la vez.</p>
+                <div style="display:flex;flex-direction:column;gap:9px;">
+                    <input id="lyvNoticeTitleAdmin" type="text" maxlength="80" value="Aviso importante" placeholder="Título del aviso">
+                    <textarea id="lyvNoticeMessageAdmin" maxlength="500" rows="4" placeholder="Escribe el aviso que verán los usuarios...">Las compras pueden demorar a veces por falta de stock o por muchas compras en cola. Por favor espera mientras procesamos tu pedido.</textarea>
+                    <select id="lyvNoticeTypeAdmin">
+                        <option value="warning" selected>⚠️ Advertencia</option>
+                        <option value="info">ℹ️ Información</option>
+                        <option value="success">✅ Aviso positivo</option>
+                        <option value="danger">🚨 Importante</option>
+                    </select>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn-action" type="button" onclick="lyvPublicarAvisoGlobal()" style="flex:1;">📢 Publicar aviso</button>
+                        <button class="btn-action" type="button" onclick="lyvDesactivarAvisoGlobal()" style="flex:1;background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border);">Ocultar aviso</button>
+                    </div>
+                    <div id="lyvNoticeAdminStatus" style="font-size:.72rem;color:var(--text-muted);"></div>
+                </div>
+            </div>
+
             <!-- RESUMEN ADMINISTRATIVO -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">📊 Resumen del negocio</div>
@@ -994,6 +1026,11 @@
             <div class="card">
                 <div class="card-title" style="color: var(--accent-blue);">🧾 Comprobantes OXXO / Reportes</div>
                 <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:12px;">Las recargas manuales quedan PENDIENTES hasta que tú revises y apruebes el comprobante. Binance, Transferencia bancaria y OXXO usan revisión administrativa.</p>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <input id="lyvBuscarRecargaAdmin" type="search" placeholder="Buscar código, folio, ID LYV o UUID..." oninput="lyvBuscarRecargasAdmin(this.value)" style="margin:0;flex:1;">
+                    <button class="btn-action" type="button" style="width:auto;padding:9px 11px;box-shadow:none;" onclick="lyvBuscarRecargasAdmin(document.getElementById('lyvBuscarRecargaAdmin')?.value||'')">Buscar</button>
+                </div>
+                <div id="lyvBusquedaRecargaAdminResultado" style="display:none;margin-bottom:8px;"></div>
                 <div id="adminPaymentReports"></div>
             </div>
 
@@ -1337,7 +1374,11 @@
                     <div style="font-size:.76rem">ID Binance destino: <b>${BINANCE_DESTINO_ID}</b></div>
                     <div style="font-size:.76rem">Código para la nota: <b>${codigo}</b></div>
                     <div style="margin-top:10px;padding:10px;border-radius:12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);color:#ffe08a;font-size:.74rem;line-height:1.45"><b>⚠️ IMPORTANTE: envía USDT</b><br>Al hacer el pago selecciona <b>USDT</b> como moneda. No envíes BTC, BNB, USDC ni otra moneda. Si no sabes cómo hacerlo, mira el tutorial oficial de Binance antes de pagar.</div>
-                    <a href="https://www.youtube.com/watch?v=OgC4_Gcppzg" target="_blank" rel="noopener noreferrer" class="btn-action" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px;text-decoration:none;background:rgba(255,0,0,.10);border:1px solid rgba(255,0,0,.28);color:#ff8a8a;box-shadow:none">▶️ Ver tutorial oficial de Binance Pay</a>
+                    <div style="margin-top:9px;padding:10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--card-border);">
+                      <div style="font-size:.75rem;font-weight:800;margin-bottom:4px;">❓ ¿No sabes cómo enviar USDT?</div>
+                      <div style="font-size:.68rem;color:var(--text-muted);line-height:1.45;margin-bottom:7px;">Mira este tutorial en español antes de realizar el pago. Revisa bien la moneda, el destinatario y la red antes de confirmar.</div>
+                      <button type="button" class="btn-action" onclick="lyvAbrirTutorialBinance()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,0,0,.10);border:1px solid rgba(255,0,0,.28);color:#ff8a8a;box-shadow:none">▶️ Ver tutorial en español: cómo enviar USDT</button>
+                    </div>
                     <div style="font-size:.68rem;color:var(--text-muted);margin-top:7px">Usa exactamente este ID, selecciona <b>USDT</b> y coloca el código en la nota/mensaje si Binance te muestra ese campo. El saldo se acreditará únicamente cuando el backend confirme el pago real.</div>
                 </div>`;
             }else if(metodoPagoElegido==='mercadopago'){
@@ -1364,7 +1405,11 @@
             }
         }
 
-        function generarCodigoNotaBinance(){
+        function lyvAbrirTutorialBinance(){
+  abrirModal(`<div class="card-title" style="color:var(--accent-blue)">▶️ Tutorial: cómo enviar USDT</div><p style="font-size:.72rem;color:var(--text-muted);line-height:1.45;margin-bottom:9px">Tutorial en español. Antes de enviar, confirma que estás usando USDT y que el destinatario es el indicado por Lyv Store Mx.</p><div style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#050508;border:1px solid var(--card-border)"><iframe src="https://www.youtube.com/embed/fddDEnNJaAs" title="Cómo Enviar USDT de Binance a Binance en español" style="position:absolute;inset:0;width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="modal-actions"><button class="btn-action" onclick="cerrarModal()">Cerrar</button></div>`);
+}
+
+function generarCodigoNotaBinance(){
             return 'LYV-'+Date.now().toString(36).toUpperCase().slice(-8)+'-'+Math.floor(1000+Math.random()*9000);
         }
 
@@ -1691,7 +1736,9 @@
             }
         }
 
-        let sistemaEnMantenimiento = (()=>{try{return localStorage.getItem("lyv_mantenimiento") === "1";}catch(e){return false;}})();
+        let sistemaEnMantenimiento = false;
+        let lyvAdminSession = false;
+        let lyvAvisoActualId = null;
         let saldoActual = 0.00;
 async function cargarSaldoReal(){
   // El saldo pertenece al usuario autenticado de Supabase, NO al ID de Free Fire.
@@ -1839,7 +1886,7 @@ cargarEstadoProductosAdminPersistente();
         function iniciarVentasEnTiempoReal() { /* Desactivado: no mostramos ventas ficticias. */ }
 
         function cambiarVista(nombre) {
-            if (sistemaEnMantenimiento && nombre !== 'admin' && nombre !== 'login') {
+            if (sistemaEnMantenimiento && !lyvAdminSession && nombre !== 'admin' && nombre !== 'login' && nombre !== 'mantenimiento') {
                 document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
                 document.getElementById('view-mantenimiento').classList.add('active');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1856,15 +1903,23 @@ cargarEstadoProductosAdminPersistente();
             }
         }
 
-        function alternarMantenimiento(estado) {
-            sistemaEnMantenimiento = !!estado;
-            try{ localStorage.setItem('lyv_mantenimiento', sistemaEnMantenimiento ? '1' : '0'); }catch(e){}
-            if (sistemaEnMantenimiento) {
-                alert('⚠️ Candado activado: la tienda queda en mantenimiento y este estado se conservará al recargar.');
-                cambiarVista('tienda');
-            } else {
-                alert('✅ Tienda abierta y operando con normalidad. El estado también se conservará al recargar.');
-                cambiarVista('tienda');
+        async function alternarMantenimiento(estado) {
+            const nuevoEstado=!!estado;
+            try{
+                const {data,error}=await lyvSupabase.rpc('lyv_admin_set_maintenance',{p_enabled:nuevoEstado});
+                if(error) throw error;
+                sistemaEnMantenimiento=!!(data?.enabled ?? nuevoEstado);
+                try{localStorage.setItem('lyv_mantenimiento',sistemaEnMantenimiento?'1':'0');}catch(e){}
+                if(sistemaEnMantenimiento){
+                    alert('⚠️ Mantenimiento activado. Los usuarios verán la pantalla de mantenimiento; tu cuenta de administrador seguirá viendo la tienda normalmente.');
+                    if(!lyvAdminSession)cambiarVista('mantenimiento');
+                    else cambiarVista('admin');
+                }else{
+                    alert('✅ Tienda abierta para todos los usuarios.');
+                    cambiarVista(lyvAdminSession?'admin':'tienda');
+                }
+            }catch(e){
+                alert('No se pudo cambiar el mantenimiento global: '+String(e?.message||e||'Error'));
             }
         }
 
@@ -2008,11 +2063,14 @@ cargarEstadoProductosAdminPersistente();
             const pid=document.getElementById('perfilUserId'); if(pid) pid.innerText=window.lyvUserId || 'No disponible'; const wid=document.getElementById('walletUserId'); if(wid) wid.innerText=window.lyvUserId || 'No disponible';
             const pua=document.getElementById('perfilUsuarioActual'); if(pua) pua.innerText='@'+usuarioActual;
             const esAdmin = perfil?.role === 'admin' || String(correoUsuario || user.email || '').trim().toLowerCase() === 'lyvstoremxweb@gmail.com';
+            lyvAdminSession=!!esAdmin;
             const am=document.getElementById('adminMenuLink'); if(am) am.style.display=esAdmin?'flex':'none';
             if(esAdmin) renderAdminCompleto();
             await lyvCargarRecargaActualDesdeSupabase();
             lyvIniciarVigilanciaRecarga();
-            cambiarVista('dashboard');
+            if(typeof lyvCargarMantenimientoGlobal==='function') await lyvCargarMantenimientoGlobal();
+            cambiarVista(lyvAdminSession?'dashboard':(sistemaEnMantenimiento?'mantenimiento':'dashboard'));
+            if(typeof lyvCargarAvisoGlobal==='function') await lyvCargarAvisoGlobal();
 
             if(errorPerfil){
                 console.warn('Sesión iniciada, pero profiles no pudo cargarse:', errorPerfil);
@@ -2033,6 +2091,8 @@ cargarEstadoProductosAdminPersistente();
                 if(!confirmar) return;
                 try{await lyvSupabase.auth.signOut();}catch(e){console.warn(e);}
                 usuarioActual = null;
+                lyvAdminSession=false;
+                try{Object.keys(sessionStorage).filter(k=>k.indexOf('lyv_notice_dismissed_')===0).forEach(k=>sessionStorage.removeItem(k));}catch(e){}
                 if(window.lyvRechargeWatch) clearInterval(window.lyvRechargeWatch);
                 lyvManualRechargeCurrent = null; window.lyvManualRechargeCurrent = null;
                 correoUsuario = "";
@@ -3371,7 +3431,7 @@ async function consultarCatalogoClever(resultadoId='adminProveedorCatalogoResult
 }
 
 function renderAdminCompleto(){renderAdminFeedback();
-    try{renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');renderAdminIncidencias();renderAdminProveedor();renderAdminOtrosProductos();cargarConfiguracionAdmin();if(typeof cargarRecargasManualesAdmin==='function') cargarRecargasManualesAdmin();}catch(e){console.warn('Admin completo:',e);}
+    try{renderAdminUsuarios(document.getElementById('adminBusquedaUsuario')?.value||'');renderAdminIncidencias();renderAdminProveedor();renderAdminOtrosProductos();cargarConfiguracionAdmin();if(typeof cargarRecargasManualesAdmin==='function') cargarRecargasManualesAdmin();if(typeof lyvCargarAvisoGlobal==='function') lyvCargarAvisoGlobal();}catch(e){console.warn('Admin completo:',e);}
 }
 
 </script>
@@ -3393,6 +3453,67 @@ window.addEventListener('load',()=>{
 </script>
 
 <script>
+/* LYV STORE MX — AVISO GLOBAL: visible al iniciar sesión, con X y activación/desactivación desde Admin. */
+(function(){
+  const styles={
+    warning:{icon:'⚠️',border:'rgba(255,193,7,.35)',bg:'rgba(255,193,7,.08)'},
+    info:{icon:'ℹ️',border:'rgba(80,160,255,.35)',bg:'rgba(80,160,255,.08)'},
+    success:{icon:'✅',border:'rgba(110,231,160,.35)',bg:'rgba(110,231,160,.08)'},
+    danger:{icon:'🚨',border:'rgba(255,91,99,.35)',bg:'rgba(255,91,99,.08)'}
+  };
+  window.lyvCerrarAvisoGlobal=function(){
+    const box=document.getElementById('lyvGlobalNotice');
+    if(box) box.style.display='none';
+    if(lyvAvisoActualId){try{sessionStorage.setItem('lyv_notice_dismissed_'+lyvAvisoActualId,'1');}catch(e){}}
+  };
+  window.lyvCargarAvisoGlobal=async function(){
+    const box=document.getElementById('lyvGlobalNotice');
+    if(!box || !usuarioActual){if(box)box.style.display='none';return;}
+    try{
+      const {data,error}=await lyvSupabase.rpc('lyv_get_active_site_notice');
+      if(error) throw error;
+      const n=Array.isArray(data)?data[0]:data;
+      if(!n?.id || n.active!==true){box.style.display='none';return;}
+      lyvAvisoActualId=String(n.id);
+      let dismissed=false;
+      try{dismissed=sessionStorage.getItem('lyv_notice_dismissed_'+lyvAvisoActualId)==='1';}catch(e){}
+      if(dismissed){box.style.display='none';return;}
+      const st=styles[String(n.notice_type||'warning')]||styles.warning;
+      document.getElementById('lyvGlobalNoticeIcon').textContent=st.icon;
+      document.getElementById('lyvGlobalNoticeTitle').textContent=String(n.title||'Aviso importante');
+      document.getElementById('lyvGlobalNoticeMessage').textContent=String(n.message||'');
+      box.style.borderColor=st.border; box.style.background=st.bg; box.style.display='block';
+    }catch(e){console.warn('Aviso global no disponible:',e);}
+  };
+  window.lyvPublicarAvisoGlobal=async function(){
+    const title=document.getElementById('lyvNoticeTitleAdmin')?.value.trim();
+    const message=document.getElementById('lyvNoticeMessageAdmin')?.value.trim();
+    const type=document.getElementById('lyvNoticeTypeAdmin')?.value||'warning';
+    const status=document.getElementById('lyvNoticeAdminStatus');
+    if(!title||!message){if(status)status.innerHTML='<span style="color:#ff8b8b">Escribe título y mensaje.</span>';return;}
+    try{
+      if(status)status.textContent='Publicando...';
+      const {error}=await lyvSupabase.rpc('lyv_admin_upsert_site_notice',{p_title:title,p_message:message,p_notice_type:type,p_active:true});
+      if(error)throw error;
+      try{sessionStorage.removeItem('lyv_notice_dismissed_'+lyvAvisoActualId);}catch(e){}
+      if(status)status.innerHTML='<span style="color:#6ee7a0">✓ Aviso activado para todos los usuarios al iniciar sesión.</span>';
+      await lyvCargarAvisoGlobal();
+    }catch(e){if(status)status.innerHTML='<span style="color:#ff8b8b">No se pudo publicar: '+escapeHtml(e?.message||e||'Error')+'</span>';}
+  };
+  window.lyvDesactivarAvisoGlobal=async function(){
+    const status=document.getElementById('lyvNoticeAdminStatus');
+    try{
+      const {data,error}=await lyvSupabase.rpc('lyv_admin_list_site_notices'); if(error)throw error;
+      const active=(Array.isArray(data)?data:[]).find(x=>x.active===true);
+      if(!active){lyvCerrarAvisoGlobal();if(status)status.innerHTML='<span style="color:#ffc107">No hay un aviso activo.</span>';return;}
+      const r=await lyvSupabase.rpc('lyv_admin_toggle_site_notice',{p_notice_id:active.id,p_active:false});
+      if(r.error)throw r.error;
+      lyvCerrarAvisoGlobal(); if(status)status.innerHTML='<span style="color:#6ee7a0">✓ Aviso desactivado para todos.</span>';
+    }catch(e){if(status)status.innerHTML='<span style="color:#ff8b8b">No se pudo ocultar: '+escapeHtml(e?.message||e||'Error')+'</span>';}
+  };
+})();
+</script>
+<script>
 // Inicialización de módulos editables de Otros Productos / Configuración
 (function(){
   try{renderizarOtrosProductosPublicos();renderAdminOtrosProductos();cargarConfiguracionAdmin();renderAdminCompleto();}catch(e){console.warn('Inicialización admin:',e);}
@@ -3401,88 +3522,21 @@ window.addEventListener('load',()=>{
 async function cargarTop5Recargas(){
   const cont=document.getElementById('lyvTop5RecargasContenido');
   if(!cont) return;
-
   try{
-    // Intentamos leer una tabla de recargas real si existe en el proyecto.
-    // No usamos localStorage, saldo ni datos inventados para el ranking.
-    const candidatos=['recharges','lyv_recharges','lyv_recharge_transactions'];
-    let filas=null;
-
-    for(const tabla of candidatos){
-      try{
-        const {data,error}=await lyvSupabase
-          .from(tabla)
-          .select('*')
-          .limit(5000);
-        if(!error && Array.isArray(data) && data.length){
-          filas=data;
-          break;
-        }
-      }catch(_){}
-    }
-
-    if(!filas){
-      cont.innerHTML='Aún no hay recargas registradas.';
-      return;
-    }
-
-    const normalizadas=filas.map(r=>{
-      const userId=r.user_id||r.userid||r.uid||r.id_usuario||null;
-      const amount=Number(
-        r.amount_mxn??r.amount??r.monto_mxn??r.monto??r.total_mxn??0
-      );
-      const status=String(
-        r.status??r.payment_status??r.estado??''
-      ).toUpperCase();
-
-      return {userId,amount,status};
-    }).filter(x=>{
-      if(!x.userId || !Number.isFinite(x.amount) || x.amount<=0) return false;
-      if(!x.status) return true;
-      return ['PAID','APPROVED','COMPLETED','CONFIRMED','SUCCESS','ACCEPTED','ENTREGADO'].includes(x.status);
-    });
-
-    if(!normalizadas.length){
-      cont.innerHTML='Aún no hay recargas confirmadas.';
-      return;
-    }
-
-    const mapa=new Map();
-    for(const r of normalizadas){
-      mapa.set(r.userId,(mapa.get(r.userId)||0)+r.amount);
-    }
-
-    const top=[...mapa.entries()]
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,5);
-
+    const {data,error}=await lyvSupabase.rpc('lyv_get_top_rechargers');
+    if(error) throw error;
+    const top=Array.isArray(data)?data:[];
     if(!top.length){
-      cont.innerHTML='Aún no hay recargas confirmadas.';
+      cont.innerHTML='Aún no hay recargas aprobadas para mostrar.';
       return;
     }
-
-    const ids=top.map(x=>x[0]);
-    let perfiles=[];
-    try{
-      const {data}=await lyvSupabase
-        .from('profiles')
-        .select('id,username,display_name')
-        .in('id',ids);
-      perfiles=data||[];
-    }catch(_){}
-
-    const nombre=(id)=>{
-      const p=perfiles.find(x=>String(x.id)===String(id));
-      return p?.username || p?.display_name || ('Usuario '+String(id).slice(0,6));
-    };
-
-    cont.innerHTML='<ol>'+top.map(([id,total])=>
-      '<li><b>'+escapeHtml(nombre(id))+'</b><span class="lyv-top-amount">$'+
-      Number(total).toFixed(2)+' MXN</span></li>'
-    ).join('')+'</ol>';
+    cont.innerHTML='<ol>'+top.slice(0,5).map((r)=>{
+      const nombre=escapeHtml(r.username||r.display_name||('Usuario '+String(r.user_id||'').slice(0,6)));
+      return '<li><b>'+nombre+'</b><span class="lyv-top-amount">$'+Number(r.total_mxn||0).toFixed(2)+' MXN</span></li>';
+    }).join('')+'</ol>';
   }catch(e){
-    console.warn('Top 5 de recargas no disponible todavía:',e);
-    cont.innerHTML='Aún no hay recargas registradas.';
+    console.warn('Top 5 de recargas:',e);
+    cont.innerHTML='El ranking aún no está disponible.';
   }
 }
 
@@ -3820,6 +3874,26 @@ async function cargarRecargasManualesAdmin(){
   }
 }
 
+async function lyvBuscarRecargasAdmin(q){
+  const box=document.getElementById('lyvBusquedaRecargaAdminResultado'); if(!box)return;
+  q=String(q||'').trim();
+  if(!q){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='block'; box.innerHTML='<div style="font-size:.72rem;color:var(--text-muted);padding:8px">Buscando...</div>';
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_search_manual_recharges',{p_query:q});
+    if(error)throw error;
+    const arr=Array.isArray(data)?data:[];
+    if(!arr.length){box.innerHTML='<div style="font-size:.72rem;color:var(--text-muted);padding:8px">No se encontraron recargas.</div>';return;}
+    box.innerHTML=arr.map(r=>{
+      const st=String(r.status||'PENDING').toUpperCase();
+      const color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107';
+      const label=st==='COMPLETED'?'COMPLETADA':st==='REJECTED'?'RECHAZADA':'PENDIENTE';
+      const date=r.created_at?new Date(r.created_at).toLocaleString('es-MX'):'—';
+      return `<div class="admin-row" style="margin-top:7px;align-items:flex-start;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:230px"><b>${lyvManualEscape(r.payment_code||'SIN CÓDIGO')}</b><div style="font-size:.7rem;color:var(--text-muted)">${lyvManualEscape(lyvManualMethodName(r.payment_method))} · $${Number(r.amount_mxn||0).toFixed(2)} MXN</div><div style="font-size:.7rem;color:var(--text-muted)">ID LYV: <b>${lyvManualEscape(r.lyv_user_id||'—')}</b> · Folio: <b>${lyvManualEscape(r.transaction_id||'—')}</b></div><div style="font-size:.68rem;color:var(--text-muted)">${lyvManualEscape(date)}</div><div style="font-size:.7rem;color:${color};font-weight:800">${label}</div>${r.admin_note?`<div style="font-size:.68rem;color:var(--text-muted)">📝 ${lyvManualEscape(r.admin_note)}</div>`:''}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${r.receipt_url?`<button class="btn-action" style="width:auto;padding:7px 9px" onclick="verComprobanteReal('${r.id}')">📷 Ver foto</button>`:''}</div></div>`;
+    }).join('');
+  }catch(e){box.innerHTML='<div style="font-size:.72rem;color:#ff8b8b;padding:8px">No se pudo buscar: '+lyvManualEscape(e?.message||e||'Error')+'</div>';}
+}
+
 function renderAdminPaymentReports(){cargarRecargasManualesAdmin();}
 async function verComprobanteReal(id){
   try{const {data,error}=await lyvSupabase.rpc('lyv_admin_list_manual_recharges');if(error)throw error;const r=(data||[]).find(x=>x.id===id);if(!r?.receipt_url){alert('Esta recarga no tiene imagen.');return;}abrirModal(`<div class="card-title" style="color:var(--accent-blue)">🧾 Comprobante ${lyvManualEscape(r.payment_code||'')}</div><img src="${r.receipt_url}" alt="Comprobante" style="display:block;width:100%;max-height:65vh;object-fit:contain;border-radius:12px;border:1px solid var(--card-border);background:#050508"><div class="modal-actions"><button class="btn-action" onclick="cerrarModal()">Cerrar</button></div>`);}catch(e){alert('No se pudo abrir el comprobante: '+String(e?.message||e||'Error'));}
@@ -3846,26 +3920,31 @@ async function renderizarHistorialRecargasSafe(){
 
 window.addEventListener('load',()=>{
   renderizarPaquetesRecarga();renderizarOpcionesPagoManual();renderizarDetalleMetodoPagoManual();renderAdminMetodosPago();cargarRecargasManualesAdmin();lyvRenderPanelValidacion();
+  if(typeof lyvCargarMantenimientoGlobal==='function') lyvCargarMantenimientoGlobal();
 });
 
 </script>
 
 \n\n
 
-</body>
-</html>
-
 <script>
-window.addEventListener('load', function(){
-  if(typeof cargarTop5Recargas==='function') cargarTop5Recargas();
+window.lyvCargarMantenimientoGlobal=async function(){
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_get_maintenance_status');
+    if(error)throw error;
+    sistemaEnMantenimiento=!!(data?.enabled ?? false);
+    try{localStorage.setItem('lyv_mantenimiento',sistemaEnMantenimiento?'1':'0');}catch(e){}
+    if(sistemaEnMantenimiento && !lyvAdminSession && !usuarioActual){
+      document.querySelectorAll('.view-section').forEach(x=>x.classList.remove('active'));
+      const v=document.getElementById('view-mantenimiento'); if(v)v.classList.add('active');
+    }
+  }catch(e){console.warn('Mantenimiento global no disponible:',e);}
+};
+window.addEventListener('load',function(){
+  if(typeof cargarTop5Recargas==='function')cargarTop5Recargas();
+  if(typeof lyvCargarMantenimientoGlobal==='function')lyvCargarMantenimientoGlobal();
+  if(typeof lyvCargarAvisoGlobal==='function' && usuarioActual)lyvCargarAvisoGlobal();
 });
 </script>
-
-
-<!-- =========================================================
-     LYV STORE MX — FINAL RECARGAS / HISTORIAL / ADMIN CLEAN VIEW
-     - Nunca borra recargas ni compras de Supabase.
-     - Admin muestra únicamente recargas PENDIENTES.
-     - El usuario conserva su historial completo.
-     - El panel de comprobante siempre se recupera desde Supabase.
-     ========================================================= -->
+</body>
+</html>
