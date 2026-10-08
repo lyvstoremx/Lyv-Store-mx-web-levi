@@ -1946,10 +1946,32 @@ cargarImagenesProductosGuardadas();
                 console.error('No se pudo cargar profiles:', e);
             }
 
-            if(perfil?.is_blocked){
+            if(errorPerfil || !perfil){
                 await lyvSupabase.auth.signOut();
                 usuarioActual = null;
-                throw new Error('Esta cuenta está bloqueada.');
+                perfilNombreActual = '';
+                correoUsuario = '';
+                cambiarVista('login');
+                alert('No se pudo verificar tu cuenta. Inicia sesión nuevamente.');
+                return;
+            }
+
+            if(perfil.is_blocked === true){
+                usuarioActual = null;
+                perfilNombreActual = '';
+                correoUsuario = '';
+
+                await lyvSupabase.auth.signOut();
+
+                const h = document.getElementById('headerUserBtn');
+                if(h) h.innerText = 'INGRESAR';
+
+                const d = document.getElementById('drawerAuthBtn');
+                if(d) d.innerHTML = '<span>🔐 Iniciar Sesión</span>';
+
+                cambiarVista('login');
+                alert('🚫 Esta cuenta está bloqueada.');
+                return;
             }
 
             correoUsuario = user.email || perfil?.email || correoUsuario;
