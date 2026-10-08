@@ -579,6 +579,24 @@
   /* El flujo manual nuevo usa únicamente #comprobanteResultadoContainer. */
   #reportMetodo, #reportTxId, #reportComprobante { display:none !important; }
 </style>
+
+<style id="lyv-final-visual-fix">
+/* LYV FINAL: colores consistentes en pagos para todos los navegadores */
+#view-billetera .metodo-pago-item,
+#view-billetera .metodo-pago-item * { color: var(--text-main) !important; }
+#view-billetera .metodo-pago-item b,
+#view-billetera .metodo-pago-item strong,
+#view-billetera .metodo-pago-item .payment-title,
+#view-billetera .metodo-pago-item .payment-name { color: var(--accent-blue) !important; }
+#view-billetera .metodo-pago-item small,
+#view-billetera .metodo-pago-item div:not(.payment-title):not(.payment-name) { color: var(--text-muted) !important; }
+#view-billetera #lyvMonedaRecargaUSD,
+#view-billetera #lyvMonedaRecargaMXN { color: var(--accent-blue) !important; }
+#view-billetera #lyvMonedaRecargaUSD *,
+#view-billetera #lyvMonedaRecargaMXN * { color: inherit !important; }
+#view-billetera .metodo-pago-item.selected { color: var(--text-main) !important; }
+</style>
+
 </head>
 <body>
 <div id="lyvLaunchNotice" style="margin:10px 12px 0;padding:12px 13px;border:1px solid rgba(255,193,7,.28);border-radius:14px;background:rgba(255,193,7,.07);color:#f5f5f5;font-size:.74rem;line-height:1.5;text-align:center"><b style="color:#ffc107">⚠️ Aviso de procesamiento</b><br>Las compras pueden demorar a veces por falta de stock o por muchas compras en cola. Por favor espera mientras procesamos tu pedido.</div>
@@ -787,9 +805,9 @@
         <div id="view-mantenimiento" class="view-section">
             <div class="card" style="text-align: center; padding: 40px 20px;">
                 <div style="font-size: 3rem; margin-bottom: 12px;">⚠️</div>
-                <div class="card-title" style="justify-content: center; font-size: 0.85rem; color: var(--accent-blue);" data-i18n="mantenimientoTitle">Sistema en Mantenimiento</div>
-                <div style="font-size: 1.1rem; font-weight: 900; margin: 15px 0;" data-i18n="mantenimientoSub">Recargas Temporalmente Suspendidas</div>
-                <p style="color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; margin-bottom: 20px;" data-i18n="mantenimientoDesc">Nuestro proveedor principal se encuentra sin saldo o en actualización. Para proteger tus compras y evitar errores, las recargas están bloqueadas momentáneamente. ¡Volvemos en breve!</p>
+                <div class="card-title" style="justify-content: center; font-size: 0.85rem; color: var(--accent-blue);" data-i18n="mantenimientoTitle">Lyv Store Mx está en mantenimiento</div>
+                <div style="font-size: 1.1rem; font-weight: 900; margin: 15px 0;" data-i18n="mantenimientoSub">Estamos realizando mejoras para ofrecerte una mejor experiencia.</div>
+                <p style="color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; margin-bottom: 20px;" data-i18n="mantenimientoDesc">La tienda estará disponible nuevamente en cuanto terminemos la actualización. Gracias por tu paciencia. ❤️</p>
                 <a href="https://wa.me/524172702259?s=p" target="_blank" class="btn-action" style="background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.3); color: #25D366; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: none;">
                     <span data-i18n="mantenimientoWp">🟢 Consultar Estado por WhatsApp</span>
                 </a>
@@ -999,6 +1017,17 @@
                 <div id="adminResultadosGlobal"></div>
             </div>
 
+            <!-- GESTIÓN DE ÓRDENES: BUSCAR / ARCHIVAR -->
+            <div class="card">
+                <div class="card-title" style="color:var(--accent-blue);">🗂️ Gestión de órdenes</div>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Las órdenes reales nunca se borran. Puedes archivarlas para que dejen de aparecer en la lista principal.</p>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <input id="lyvAdminOrderSearch" type="search" placeholder="ORD-XXXXXX / ID Free Fire / producto / ID proveedor" style="margin:0;flex:1;">
+                    <button class="btn-action" type="button" style="width:auto;padding:9px 11px;box-shadow:none;" onclick="lyvAdminBuscarOrdenes()">Buscar</button>
+                </div>
+                <div id="lyvAdminOrdersResult"></div>
+            </div>
+
             <!-- ESTADO DEL SISTEMA -->
             
 
@@ -1035,7 +1064,7 @@
             <!-- CONTROL DE MANTENIMIENTO -->
             <div class="card">
                 <div class="card-title" style="color: var(--accent-blue);" data-i18n="ctrlMantTitle">🚨 Control de Mantenimiento / Proveedor</div>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="ctrlMantSub">Activa o desactiva el candado si el proveedor se queda sin saldo o cae su API.</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="ctrlMantSub">Activa el mantenimiento cuando necesites actualizar la tienda o proteger las compras mientras realizas cambios.</p>
                 <div style="display: flex; gap: 10px;">
                     <button class="btn-action btn-danger" style="flex: 1;" onclick="alternarMantenimiento(true)" data-i18n="activarMantBtn">Activar Mantenimiento</button>
                     <button class="btn-action" style="flex: 1; background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff; box-shadow: none;" onclick="alternarMantenimiento(false)" data-i18n="desactivarMantBtn">Desactivar / Abrir Tienda</button>
@@ -1493,9 +1522,9 @@ function generarCodigoNotaBinance(){
                 comunidadSub: "Únete a nuestra comunidad oficial en WhatsApp para sorteos y avisos:",
                 comunidadWp: "📢 Unirme al Canal de WhatsApp",
                 redesTitle: "🌐 Redes Sociales",
-                mantenimientoTitle: "Sistema en Mantenimiento",
-                mantenimientoSub: "Recargas Temporalmente Suspendidas",
-                mantenimientoDesc: "Nuestro proveedor principal se encuentra sin saldo o en actualización. Para proteger tus compras y evitar errores, las recargas están bloqueadas momentáneamente. ¡Volvemos en breve!",
+                mantenimientoTitle: "Lyv Store Mx está en mantenimiento",
+                mantenimientoSub: "Estamos realizando mejoras para ofrecerte una mejor experiencia.",
+                mantenimientoDesc: "La tienda estará disponible nuevamente en cuanto terminemos la actualización. Gracias por tu paciencia. ❤️",
                 mantenimientoWp: "🟢 Consultar Estado por WhatsApp",
                 loginSubtitle: "Lyv Store Mx",
                 correoPlaceholder: "Correo electrónico",
@@ -1804,7 +1833,7 @@ async function cargarSaldoReal(){
         let idFreeFire = "";
         let metodoPagoElegido = "mercadopago";
         let historialOrdenes = [];
-        let colaboradores = (()=>{try{const a=JSON.parse(localStorage.getItem("lyv_colaboradores_v2")||"[]");return Array.isArray(a)?a:[];}catch(e){return [];}})();
+        let colaboradores = [];
         let customLogoHtml = '<svg class="logo-svg" viewBox="0 0 24 24"><use href="#blue-diamond-icon"/></svg>';
 
         const LYV_PRODUCT_IMAGES_KEY = 'lyv_product_images_v1';
@@ -1892,6 +1921,7 @@ cargarEstadoProductosAdminPersistente();
                 renderizarAdminProductos();
                 renderizarAdminColaboradores();
                 renderAdminCompleto();
+                setTimeout(()=>{if(typeof lyvAdminBuscarOrdenes==='function')lyvAdminBuscarOrdenes();},50);
             }
         }
 
@@ -2289,54 +2319,95 @@ function actualizarIconoProducto(id) {
 
         
 
-        function guardarColaboradoresPersistentes(){
-            try{localStorage.setItem('lyv_colaboradores_v2',JSON.stringify(colaboradores||[]));}catch(e){console.warn('No se pudieron guardar colaboradores',e);}
+        async function cargarColaboradoresPersistentes(){
+            try{
+                const {data,error}=await lyvSupabase.rpc('lyv_get_active_collaborators');
+                if(error) throw error;
+                colaboradores=Array.isArray(data)?data.map(c=>({id:c.id,nombre:c.name||'',url:c.url||'',activo:c.active!==false})):[];
+                // Migra automáticamente colaboradores antiguos guardados solo en este navegador.
+                if(!colaboradores.length && lyvAdminSession){
+                    try{
+                        const legacy=JSON.parse(localStorage.getItem('lyv_colaboradores_v2')||'[]');
+                        if(Array.isArray(legacy) && legacy.length){
+                            for(const c of legacy){
+                                if(c?.nombre && c?.url){
+                                    await lyvSupabase.rpc('lyv_admin_upsert_collaborator',{p_id:null,p_name:String(c.nombre),p_url:String(c.url),p_active:true});
+                                }
+                            }
+                            const again=await lyvSupabase.rpc('lyv_get_active_collaborators');
+                            colaboradores=Array.isArray(again.data)?again.data.map(c=>({id:c.id,nombre:c.name||'',url:c.url||'',activo:c.active!==false})):[];
+                        }
+                    }catch(_e){ console.warn('Migración de colaboradores antiguos:',_e); }
+                }
+                renderizarAdminColaboradores();
+                renderizarColaboradoresTienda();
+            }catch(e){
+                console.warn('No se pudieron cargar colaboradores:',e);
+                // Compatibilidad: conserva datos locales antiguos solo como respaldo visual del admin.
+                try{const a=JSON.parse(localStorage.getItem('lyv_colaboradores_v2')||'[]');if(Array.isArray(a)) colaboradores=a;}catch(_e){}
+                renderizarAdminColaboradores();
+                renderizarColaboradoresTienda();
+            }
         }
 
         function normalizarUrlColaborador(url){
             let u=String(url||'').trim();
             if(!u)return '';
             if(/^wa\.me\//i.test(u)) u='https://'+u;
-            if(/^tel:/i.test(u)) return u;
             if(!/^https?:\/\//i.test(u)) u='https://'+u;
             return u;
         }
 
-        function agregarColaborador() {
+        async function agregarColaborador() {
             const nombre=document.getElementById('collabNameInput')?.value.trim()||'';
             const url=normalizarUrlColaborador(document.getElementById('collabContactInput')?.value.trim()||'');
-            if(!nombre || !url){ alert('Ingresa el nombre y la URL completa del colaborador. Ejemplo: https://wa.me/521XXXXXXXXXX'); return; }
-            try{new URL(url);}catch(e){alert('La URL no es válida. Ejemplo: https://wa.me/521XXXXXXXXXX');return;}
-            colaboradores.push({id:Date.now(),nombre,url});
-            guardarColaboradoresPersistentes();
-            document.getElementById('collabNameInput').value='';
-            document.getElementById('collabContactInput').value='';
-            renderizarAdminColaboradores(); renderizarColaboradoresTienda();
-            alert('¡Colaborador agregado y guardado!');
+            if(!nombre || !url){ alert('Ingresa el nombre y la URL completa del colaborador.'); return; }
+            try{new URL(url);}catch(e){alert('La URL no es válida.');return;}
+            try{
+                const {data,error}=await lyvSupabase.rpc('lyv_admin_upsert_collaborator',{p_id:null,p_name:nombre,p_url:url,p_active:true});
+                if(error) throw error;
+                document.getElementById('collabNameInput').value='';
+                document.getElementById('collabContactInput').value='';
+                await cargarColaboradoresPersistentes();
+                alert('¡Colaborador guardado para todos los usuarios!');
+            }catch(e){alert('No se pudo guardar el colaborador: '+String(e?.message||e||'Error'));}
         }
 
-        function eliminarColaborador(id) {
-            colaboradores=colaboradores.filter(c=>c.id!==id);
-            guardarColaboradoresPersistentes();
-            renderizarAdminColaboradores(); renderizarColaboradoresTienda();
-            alert('Colaborador eliminado y guardado.');
+        async function eliminarColaborador(id) {
+            if(!confirm('¿Eliminar este colaborador de la tienda?'))return;
+            try{
+                const {error}=await lyvSupabase.rpc('lyv_admin_delete_collaborator',{p_id:String(id)});
+                if(error) throw error;
+                await cargarColaboradoresPersistentes();
+            }catch(e){alert('No se pudo eliminar: '+String(e?.message||e||'Error'));}
+        }
+
+        async function alternarColaborador(id,activo){
+            try{
+                const c=colaboradores.find(x=>String(x.id)===String(id));
+                if(!c) return;
+                const {data,error}=await lyvSupabase.rpc('lyv_admin_upsert_collaborator',{p_id:String(id),p_name:c.nombre,p_url:c.url,p_active:!!activo});
+                if(error) throw error;
+                await cargarColaboradoresPersistentes();
+            }catch(e){alert('No se pudo cambiar el estado: '+String(e?.message||e||'Error'));}
         }
 
         function renderizarAdminColaboradores() {
             const list=document.getElementById('adminCollabList'); if(!list)return;
             if(!colaboradores.length){list.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);text-align:center;padding:10px">No hay colaboradores agregados.</div>';return;}
-            list.innerHTML=colaboradores.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.02);padding:10px 12px;border-radius:12px;border:1px solid var(--card-border);gap:10px">
-                <div style="min-width:0"><div style="font-weight:bold;font-size:.82rem">👤 ${escapeHtml(c.nombre)}</div><div style="font-size:.68rem;color:var(--accent-blue);word-break:break-all">🔗 ${escapeHtml(c.url||'')}</div></div>
-                <button class="btn-action btn-danger" style="width:auto;padding:6px 12px;font-size:.7rem;box-shadow:none" onclick="eliminarColaborador(${Number(c.id)})">Eliminar</button>
+            list.innerHTML=colaboradores.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.02);padding:10px 12px;border-radius:12px;border:1px solid var(--card-border);gap:10px;flex-wrap:wrap">
+                <div style="min-width:0;flex:1"><div style="font-weight:bold;font-size:.82rem">👤 ${escapeHtml(c.nombre)}</div><div style="font-size:.68rem;color:var(--accent-blue);word-break:break-all">🔗 ${escapeHtml(c.url||'')}</div></div>
+                <div style="display:flex;gap:6px;align-items:center"><label class="switch"><input type="checkbox" ${c.activo!==false?'checked':''} onchange="alternarColaborador('${String(c.id)}',this.checked)"><span class="slider"></span></label><button class="btn-action btn-danger" style="width:auto;padding:6px 12px;font-size:.7rem;box-shadow:none" onclick="eliminarColaborador('${String(c.id)}')">Eliminar</button></div>
             </div>`).join('');
         }
 
         function renderizarColaboradoresTienda() {
             const card=document.getElementById('colaboradoresTiendaCard'),list=document.getElementById('listaColaboradoresTienda');
             if(!card||!list)return;
-            if(!colaboradores.length){card.style.display='none';return;}
+            const activos=colaboradores.filter(c=>c.activo!==false);
+            if(!activos.length){card.style.display='none';return;}
             card.style.display='flex';
-            list.innerHTML=colaboradores.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:10px 12px;border-radius:12px;border:1px solid var(--card-border);gap:10px">
+            list.innerHTML=activos.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:10px 12px;border-radius:12px;border:1px solid var(--card-border);gap:10px">
                 <div style="font-weight:bold;font-size:.82rem;min-width:0">🤝 ${escapeHtml(c.nombre)}</div>
                 <a href="${escapeHtml(c.url||'#')}" target="_blank" rel="noopener noreferrer" style="background:rgba(37,211,102,.15);color:#25D366;padding:6px 12px;border-radius:8px;font-size:.75rem;text-decoration:none;font-weight:bold;white-space:nowrap">WhatsApp</a>
             </div>`).join('');
@@ -3088,6 +3159,39 @@ async function renderAdminFeedback(){
   }catch(e){
     c.innerHTML='<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las opiniones.</div>';
   }
+}
+
+async function lyvAdminBuscarOrdenes(){
+  const q=(document.getElementById('lyvAdminOrderSearch')?.value||'').trim();
+  const c=document.getElementById('lyvAdminOrdersResult'); if(!c)return;
+  c.innerHTML='<div style="font-size:.72rem;color:var(--text-muted);padding:8px">Cargando órdenes...</div>';
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_list_orders',{p_query:q||null});
+    if(error)throw error;
+    const arr=Array.isArray(data)?data:[];
+    if(!arr.length){c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);padding:10px;text-align:center">No hay órdenes activas que coincidan.</div>';return;}
+    c.innerHTML=arr.map(o=>{
+      const st=traducirEstadoOrden(o.provider_status||o.status||'PENDING');
+      const canArchive=!o.provider_order_id;
+      return `<div class="admin-row" style="margin-top:7px;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:230px"><b>${escapeHtml(o.local_order_id||('ORD-'+(o.provider_order_id||String(o.id).slice(0,8))))}</b>
+        <div style="font-size:.7rem;color:var(--text-muted)">${escapeHtml(o.product_name||'Producto')} · x${Number(o.quantity||1)} · $${Number(o.total_mxn||0).toFixed(2)} MXN</div>
+        <div style="font-size:.7rem;color:var(--text-muted)">FF: ${escapeHtml(o.uid||'—')} · SixoFire: ${escapeHtml(o.provider_order_id||'—')}</div>
+        <div style="font-size:.7rem;color:var(--text-muted)">Estado: <b>${escapeHtml(st)}</b> · ${escapeHtml(o.created_at?new Date(o.created_at).toLocaleString('es-MX'):'—')}</div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn-action" style="width:auto;padding:7px 9px" onclick="verPedido('${escapeHtml(o.local_order_id||o.provider_order_id||o.id)}')">Ver</button>${canArchive?`<button class="btn-action" style="width:auto;padding:7px 9px;background:rgba(255,193,7,.10);color:#ffc107;border:1px solid rgba(255,193,7,.25);box-shadow:none" onclick="lyvAdminArchivarOrden('${String(o.id)}')">🗄️ Archivar</button>`:'<span style="font-size:.65rem;color:var(--text-muted);padding:7px">Orden de proveedor protegida</span>'}</div>
+      </div>`;
+    }).join('');
+  }catch(e){c.innerHTML='<div style="font-size:.75rem;color:#ff8b8b;padding:8px">No se pudieron cargar las órdenes: '+escapeHtml(e?.message||e||'Error')+'</div>';}
+}
+
+async function lyvAdminArchivarOrden(id){
+  if(!confirm('¿Archivar esta orden? No se borrará de la base de datos.'))return;
+  try{
+    const {data,error}=await lyvSupabase.rpc('lyv_admin_archive_order',{p_order_id:String(id)});
+    if(error)throw error;
+    alert(data?.already_archived?'La orden ya estaba archivada.':'✅ Orden archivada.');
+    await lyvAdminBuscarOrdenes();
+  }catch(e){alert('No se pudo archivar: '+String(e?.message||e||'Error'));}
 }
 
 function renderAdminDashboard(){renderAdminMetodosPago();cargarCreditosManualesVisual();const all=window.lyvAllOrders||[];const ventas=all.reduce((a,o)=>a+(Number(o.precio)||0),0);document.getElementById('adminVentasHoy')&&(document.getElementById('adminVentasHoy').innerText='$'+ventas.toFixed(2));document.getElementById('adminPedidosHoy')&&(document.getElementById('adminPedidosHoy').innerText=all.length);document.getElementById('adminPendientes')&&(document.getElementById('adminPendientes').innerText=all.filter(o=>String(o.estado).toLowerCase().includes('pendiente')).length);document.getElementById('adminUsuarios')&&(document.getElementById('adminUsuarios').innerText=new Set(all.map(o=>o.email).filter(Boolean)).size+(usuarioActual?1:0));}
@@ -4002,6 +4106,12 @@ window.addEventListener('load',function(){
   if(typeof cargarTop5Recargas==='function')cargarTop5Recargas();
   if(typeof lyvCargarMantenimientoGlobal==='function')lyvCargarMantenimientoGlobal();
   if(typeof lyvCargarAvisoGlobal==='function' && usuarioActual)lyvCargarAvisoGlobal();
+});
+</script>
+
+<script id="lyv-final-load-fixes">
+window.addEventListener('load',()=>{
+  setTimeout(()=>{try{if(typeof cargarColaboradoresPersistentes==='function')cargarColaboradoresPersistentes();}catch(e){}},500);
 });
 </script>
 </body>
