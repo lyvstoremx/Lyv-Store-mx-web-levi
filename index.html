@@ -3080,125 +3080,76 @@ async function validarId(){
     const regionTexto = document.getElementById('regionFreeFireTexto');
     const msg = document.getElementById('lyvPlayerVerification');
     const btn = document.getElementById('btnVerificarId');
-
     const inputId = String(input?.value || '').trim();
 
     if(!/^\d{8,12}$/.test(inputId)){
         if(msg) msg.innerHTML = '<span style="color:#ff8b8b">✗ El ID debe tener entre 8 y 12 dígitos.</span>';
-        input?.focus();
-        return;
+        input?.focus(); return;
     }
-
-    if(btn){
-        btn.disabled = true;
-        btn.innerText = '…';
-    }
-
-    if(regionTexto) regionTexto.textContent = 'Detectando…';
-    if(msg) msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID de Free Fire y detectando región...</span>';
+    if(btn){ btn.disabled=true; btn.innerText='…'; }
+    if(regionTexto) regionTexto.textContent='Detectando…';
+    if(msg) msg.innerHTML='<span style="color:#ffc107">⏳ Verificando ID y detectando región automáticamente...</span>';
 
     try{
-        // Para usuarios de México probamos primero SAC y después US.
-        // No se toca la compra, el saldo ni la creación de órdenes.
-        const regionesAuto = ['SAC','US'];
-        let data = null;
-        let detectedRegion = '';
+        // Detección automática: primero SAC y US, sin pedir al usuario elegir región.
+        const regionesAuto=['SAC','US'];
+        let data=null, detectedRegion='';
+        let ultimoError='';
 
         for(const region of regionesAuto){
             try{
-                const r = await llamarCleverEndpoint({
-                    action: 'account_info',
-                    uid: inputId,
-                    region
-                });
-
-                if(r?.code === 'ACCOUNT_INFO_OK'){
-                    data = r;
-                    detectedRegion = String(r?.account?.region || region).trim().toUpperCase();
+                const r=await llamarCleverEndpoint({action:'account_info',uid:inputId,region});
+                // Aceptamos la respuesta normal del Clever aunque el proveedor no devuelva nickname.
+                if(r && (r.code==='ACCOUNT_INFO_OK' || r.ok===true)){
+                    data=r;
+                    detectedRegion=String(r?.account?.region || region).trim().toUpperCase();
                     break;
                 }
+                ultimoError=String(r?.message || r?.provider_message || r?.code || 'Cuenta no encontrada');
             }catch(err){
-                console.warn('Región no encontrada:', region, err);
+                ultimoError=String(err?.message || err || 'Error de verificación');
             }
         }
 
-        if(!data){
-            throw new Error('No se pudo encontrar ese jugador en las regiones disponibles para detección automática.');
-        }
+        if(!data) throw new Error(ultimoError || 'No se pudo verificar el jugador.');
 
-        const account = data?.account || {};
-        const nickname = String(account.nickname || '').trim();
-        const level = account.level ?? account?.basicInfo?.level ?? '';
-        const headPic = String(account.head_pic || account?.basicInfo?.head_pic || '').trim();
-        const avatarUrl = headPic
-            ? ('https://api.sixofire.net/assets/image/' + encodeURIComponent(headPic) + '/png')
-            : '';
+        const account=data?.account || {};
+        const nickname=String(account.nickname || '').trim();
+        const level=account.level ?? account?.basicInfo?.level ?? '';
+        const headPic=String(account.head_pic || account?.basicInfo?.head_pic || '').trim();
+        const avatarUrl=headPic ? ('https://api.sixofire.net/assets/image/'+encodeURIComponent(headPic)+'/png') : '';
 
-        idFreeFire = inputId;
-        window.lyvFreeFireName = nickname;
-        window.lyvFreeFireRegion = detectedRegion;
-        window.lyvFreeFireLevel = level;
-        window.lyvFreeFireAvatar = avatarUrl;
+        idFreeFire=inputId;
+        window.lyvFreeFireName=nickname;
+        window.lyvFreeFireRegion=detectedRegion;
+        window.lyvFreeFireLevel=level;
+        window.lyvFreeFireAvatar=avatarUrl;
 
-        const playerCard = document.getElementById('lyvPlayerInfoCard');
-        const playerAvatar = document.getElementById('lyvPlayerAvatar');
-        const playerName = document.getElementById('lyvPlayerInfoName');
-        const playerMeta = document.getElementById('lyvPlayerInfoMeta');
-        if(playerCard) playerCard.style.display = 'block';
-        if(playerName) playerName.textContent = nickname || 'Jugador verificado';
-        if(playerMeta) playerMeta.textContent =
-            'UID ' + inputId + ' · Región ' + detectedRegion + (level !== '' ? ' · Nivel ' + level : '');
+        const playerCard=document.getElementById('lyvPlayerInfoCard');
+        const playerAvatar=document.getElementById('lyvPlayerAvatar');
+        const playerName=document.getElementById('lyvPlayerInfoName');
+        const playerMeta=document.getElementById('lyvPlayerInfoMeta');
+        if(playerCard) playerCard.style.display='block';
+        if(playerName) playerName.textContent=nickname || 'Jugador verificado';
+        if(playerMeta) playerMeta.textContent='UID '+inputId+' · Región '+detectedRegion+(level!==''?' · Nivel '+level:'');
         if(playerAvatar){
-            if(avatarUrl){
-                playerAvatar.src = avatarUrl;
-                playerAvatar.style.display = 'block';
-                playerAvatar.onerror = function(){ this.style.display='none'; };
-            }else{
-                playerAvatar.style.display = 'none';
-            }
+            if(avatarUrl){ playerAvatar.src=avatarUrl; playerAvatar.style.display='block'; playerAvatar.onerror=function(){this.style.display='none';}; }
+            else playerAvatar.style.display='none';
         }
-
-        if(input) input.value = inputId;
-        if(regionTexto) regionTexto.textContent = detectedRegion;
-
-        if(msg){
-            msg.innerHTML = nickname
-                ? '<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>' + escapeHtml(nickname) + '</b> · Región ' + escapeHtml(detectedRegion) + '</span>'
-                : '<span style="color:#45e08a">✓ Cuenta confirmada · UID ' + escapeHtml(inputId) + ' · Región ' + escapeHtml(detectedRegion) + '</span>';
-        }
-
-        lyvLog(
-            'ID FREE FIRE',
-            `ID ${inputId} verificado · ${nickname} · ${detectedRegion}`
-        );
-
+        if(input) input.value=inputId;
+        if(regionTexto) regionTexto.textContent=detectedRegion;
+        if(msg) msg.innerHTML=nickname
+          ? '<span style="color:#45e08a">✓ ¡Jugador encontrado! <b>'+escapeHtml(nickname)+'</b> · Región '+escapeHtml(detectedRegion)+'</span>'
+          : '<span style="color:#45e08a">✓ Cuenta confirmada · UID '+escapeHtml(inputId)+' · Región '+escapeHtml(detectedRegion)+'</span>';
+        lyvLog('ID FREE FIRE',`ID ${inputId} verificado · ${nickname} · ${detectedRegion}`);
     }catch(e){
-        idFreeFire = '';
-        window.lyvFreeFireName = '';
-        window.lyvFreeFireRegion = '';
-        window.lyvFreeFireLevel = '';
-        window.lyvFreeFireAvatar = '';
-        const failedPlayerCard = document.getElementById('lyvPlayerInfoCard');
-        if(failedPlayerCard) failedPlayerCard.style.display = 'none';
-
-        if(regionTexto) regionTexto.textContent = 'No detectada';
-
-        const raw = String(e?.message || e || 'No se pudo verificar el jugador.');
-
-        if(msg){
-            msg.innerHTML =
-                '<span style="color:#ff8b8b">✗ ' +
-                escapeHtml(raw) +
-                '</span>';
-        }
+        idFreeFire=''; window.lyvFreeFireName=''; window.lyvFreeFireRegion='';
+        if(msg) msg.innerHTML='<span style="color:#ff8b8b">✗ '+escapeHtml(String(e?.message || e || 'No se pudo verificar el jugador.'))+'</span>';
+        if(regionTexto) regionTexto.textContent='No detectada';
     }finally{
-        if(btn){
-            btn.disabled = false;
-            btn.innerText = '✓';
-        }
+        if(btn){btn.disabled=false;btn.innerText='✓';}
     }
 }
-
 // Redibuja extras al cargar sin alterar el diseño existente.
 window.addEventListener('load',()=>{
   iniciarActualizacionVentasTiempoReal();
