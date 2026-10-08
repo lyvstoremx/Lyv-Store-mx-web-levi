@@ -581,7 +581,7 @@
 </style>
 </head>
 <body>
-<div id="lyvLaunchNotice" style="margin:10px 12px 0;padding:12px 13px;border:1px solid rgba(255,193,7,.28);border-radius:14px;background:rgba(255,193,7,.07);color:#f5f5f5;font-size:.74rem;line-height:1.5;text-align:center"><b style="color:#ffc107">⚠️ Aviso importante</b><br>Las compras pueden demorar a veces por falta de stock o por muchas compras en cola. Por favor espera mientras procesamos tu pedido.</div>
+<div id="lyvLaunchNotice" style="margin:10px 12px 0;padding:12px 13px;border:1px solid rgba(255,193,7,.28);border-radius:14px;background:rgba(255,193,7,.07);color:#f5f5f5;font-size:.74rem;line-height:1.5;text-align:center"><b style="color:#ffc107">⚠️ Aviso de procesamiento</b><br>Las compras pueden demorar a veces por falta de stock o por muchas compras en cola. Por favor espera mientras procesamos tu pedido.</div>
 
 
     <svg style="display:none;">
@@ -920,10 +920,10 @@
             <!-- AVISO GLOBAL PARA TODOS -->
             <div class="card">
                 <div class="card-title" style="color:var(--accent-blue);">📢 Aviso para todos los usuarios</div>
-                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Publica un aviso visible para todos. Solo habrá un aviso activo a la vez.</p>
+                <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px;">Este es un aviso adicional para todos los usuarios. <b>No reemplaza ni quita el aviso fijo sobre demoras de compras.</b> Puedes usarlo, por ejemplo, para dar las gracias o comunicar novedades.</p>
                 <div style="display:flex;flex-direction:column;gap:9px;">
-                    <input id="lyvNoticeTitleAdmin" type="text" maxlength="80" value="Aviso importante" placeholder="Título del aviso">
-                    <textarea id="lyvNoticeMessageAdmin" maxlength="500" rows="4" placeholder="Escribe el aviso que verán los usuarios...">Las compras pueden demorar a veces por falta de stock o por muchas compras en cola. Por favor espera mientras procesamos tu pedido.</textarea>
+                    <input id="lyvNoticeTitleAdmin" type="text" maxlength="80" value="" placeholder="Ej. ¡Gracias por tu confianza!">
+                    <textarea id="lyvNoticeMessageAdmin" maxlength="500" rows="4" placeholder="Escribe aquí el aviso adicional que quieres mostrar a todos..."> </textarea>
                     <select id="lyvNoticeTypeAdmin">
                         <option value="warning" selected>⚠️ Advertencia</option>
                         <option value="info">ℹ️ Información</option>
@@ -1825,13 +1825,22 @@ async function cargarSaldoReal(){
         let customLogoHtml = '<svg class="logo-svg" viewBox="0 0 24 24"><use href="#blue-diamond-icon"/></svg>';
 
         const LYV_PRODUCT_IMAGES_KEY = 'lyv_product_images_v1';
+const LYV_PRODUCT_IMAGE_RESET_KEY = 'lyv_product_image_reset_v2';
+const LYV_DEFAULT_FRAGMENT_BOX_IMAGE = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22b%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%236b2b16%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23c97932%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22m%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23ffd166%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23e9a22b%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20x%3D%2228%22%20y%3D%2254%22%20width%3D%22200%22%20height%3D%22154%22%20rx%3D%2218%22%20fill%3D%22url(%23b)%22%20stroke%3D%22%23f3b85b%22%20stroke-width%3D%227%22%2F%3E%3Cpath%20d%3D%22M28%2083h200M28%20177h200M75%2054v154M181%2054v154%22%20fill%3D%22none%22%20stroke%3D%22%238f4d27%22%20stroke-width%3D%227%22%20opacity%3D%22.9%22%2F%3E%3Cpath%20d%3D%22M52%2092h152v66H52z%22%20fill%3D%22%234a2416%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M72%20105l22%200%2013%2015-13%2015H72l13-15zM162%20105h22l13%2015-13%2015h-22l-13-15z%22%20fill%3D%22url(%23m)%22%2F%3E%3Cpath%20d%3D%22M105%2095h46v56h-46z%22%20fill%3D%22%23d88735%22%20stroke%3D%22%23ffd166%22%20stroke-width%3D%225%22%2F%3E%3Cpath%20d%3D%22M114%20111h28M114%20123h28M114%20135h20%22%20stroke%3D%22%23fff0bd%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M55%2065l25-18h96l25%2018%22%20fill%3D%22%237a351d%22%20stroke%3D%22%23f3b85b%22%20stroke-width%3D%226%22%2F%3E%3C%2Fsvg%3E';
 
 function cargarImagenesProductosGuardadas(){
   try{
     const saved = JSON.parse(localStorage.getItem(LYV_PRODUCT_IMAGES_KEY) || '{}');
-    if(!saved || typeof saved !== 'object') return;
+    const resetDone = localStorage.getItem(LYV_PRODUCT_IMAGE_RESET_KEY) === '1';
+    if(!resetDone){
+      // Reemplaza la imagen anterior de prueba de la Caja de Fragmentos una sola vez.
+      if(saved && typeof saved === 'object') delete saved['9'];
+      localStorage.setItem(LYV_PRODUCT_IMAGES_KEY, JSON.stringify(saved && typeof saved === 'object' ? saved : {}));
+      localStorage.setItem(LYV_PRODUCT_IMAGE_RESET_KEY, '1');
+    }
     productos.forEach(p=>{
-      if(saved[p.id]) p.icon = saved[p.id];
+      if(String(p.id)==='9' && !saved?.['9']) p.icon = LYV_DEFAULT_FRAGMENT_BOX_IMAGE;
+      else if(saved && saved[p.id]) p.icon = saved[p.id];
     });
   }catch(e){ console.warn('No se pudieron cargar imágenes guardadas:',e); }
 }
@@ -3126,7 +3135,7 @@ async function sincronizarCatalogoSixoFire(){
 
 function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div><div style="font-size:.65rem;color:var(--text-muted)">Producto conectado: ${escapeHtml(p.provider_product_id||'Automático')}</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=!!activo;guardarEstadoProductosAdminPersistente();renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${p.activo?'Disponible':'No disponible'}`);}
-function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
+function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
 
 function seleccionarProd(el,nombre,precio,id){
     document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));
@@ -3921,7 +3930,9 @@ async function renderizarHistorialRecargasSafe(){
     return;
   }
   try{
-    const {data,error}=await lyvSupabase.rpc('lyv_get_my_manual_recharges');
+    const {data:userData,error:userError}=await lyvSupabase.auth.getUser();
+    if(userError||!userData?.user) throw userError||new Error('Sesión no encontrada.');
+    const {data,error}=await lyvSupabase.from('lyv_manual_recharges').select('*').eq('user_id',userData.user.id).order('created_at',{ascending:false});
     if(error)throw error;
     const arr=Array.isArray(data)?data:[];
     c.innerHTML=arr.length?arr.map(r=>{
