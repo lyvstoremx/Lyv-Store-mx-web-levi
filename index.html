@@ -153,7 +153,7 @@
     const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
     if(!tx){alert('Primero escribe el ID de transacción, referencia o folio.');return;}
     if(!file){alert('Primero sube la foto del comprobante.');return;}
-    if(file.size>8*1024*1024){alert('La imagen original no puede superar 8 MB.');return;}
+    if(file.size>15*1024*1024){alert('La imagen original no puede superar 15 MB.');return;}
     abrirModal(`<div style="text-align:center">
       <div style="font-size:2.2rem">⚠️</div>
       <h3 style="margin:8px 0">¿Ya realizaste el pago?</h3>
@@ -3857,7 +3857,7 @@ function lyvMostrarConfirmacionPago(){
   const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
   if(!tx){alert('Primero escribe el ID de transacción, referencia o folio.');return;}
   if(!file){alert('Primero sube la foto del comprobante.');return;}
-  if(file.size>8*1024*1024){alert('La imagen original no puede superar 8 MB.');return;}
+  if(file.size>15*1024*1024){alert('La imagen original no puede superar 15 MB.');return;}
   abrirModal(`<div style="text-align:center"><div style="font-size:2.2rem">⚠️</div><h3 style="margin:8px 0">Confirmar envío</h3><p style="font-size:.78rem;color:var(--text-muted);line-height:1.55">Confirma que <b>ya realizaste el pago</b> y que el ID/folio y la foto corresponden a esta recarga.</p><p style="font-size:.74rem;color:#ffc107;line-height:1.5">Al continuar, tu comprobante será enviado al administrador para validación. El saldo seguirá pendiente hasta que sea aprobado.</p><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();lyvEnviarPagoInline(true)">Sí, ya hice el pago</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div></div>`);
 }
 function lyvRenderPanelValidacion(){
@@ -3899,13 +3899,19 @@ async function lyvEnviarPagoInline(skipConfirm){
   if(String(recharge.status||'PENDING').toUpperCase()!=='PENDING'){lyvRenderPanelValidacion();return;}
   if(!tx){alert('Ingresa el ID de transacción, referencia o folio.');return;}
   if(!file){alert('Sube la foto del comprobante.');return;}
-  if(file.size>8*1024*1024){alert('La imagen original no puede superar 8 MB.');return;}
+  if(file.size>15*1024*1024){alert('La imagen original no puede superar 15 MB.');return;}
   if(!skipConfirm && !confirm('Confirma que YA realizaste el pago. El comprobante se enviará a revisión y el saldo seguirá pendiente hasta que el administrador lo verifique.'))return;
   try{
     const {data:{user},error:userError}=await lyvSupabase.auth.getUser();if(userError||!user)throw userError||new Error('Sesión no encontrada.');
     const receipt=await lyvResizeReceipt(file);
-    const {error}=await lyvSupabase.from('lyv_manual_recharges').update({transaction_id:tx,receipt_url:receipt,receipt_name:file.name}).eq('id',recharge.id).eq('user_id',user.id).eq('status','PENDING');
+    const {data:proofData,error}=await lyvSupabase.rpc('lyv_submit_manual_recharge_proof',{
+      p_recharge_id: recharge.id,
+      p_transaction_id: tx,
+      p_receipt_url: receipt,
+      p_receipt_name: file.name
+    });
     if(error)throw error;
+    if(!proofData?.id)throw new Error('Supabase no confirmó el envío del comprobante.');
     recharge.transaction_id=tx;recharge.receipt_url=receipt;recharge.receipt_name=file.name;recharge.status='PENDING';
     lyvRenderPanelValidacion();
     renderizarHistorialRecargasSafe();
@@ -4080,7 +4086,7 @@ window.addEventListener('load',()=>{
     const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
     if(!tx){alert('Primero escribe el ID de transacción, referencia o folio.');return;}
     if(!file){alert('Primero sube la foto del comprobante.');return;}
-    if(file.size>8*1024*1024){alert('La imagen original no puede superar 8 MB.');return;}
+    if(file.size>15*1024*1024){alert('La imagen original no puede superar 15 MB.');return;}
     abrirModal(`<div style="text-align:center"><div style="font-size:2.2rem">⚠️</div><h3 style="margin:8px 0">¿Ya realizaste el pago?</h3><p style="font-size:.78rem;color:var(--text-muted);line-height:1.55">Confirma que ya realizaste el pago y que el ID/folio y la foto corresponden a esta recarga.</p><p style="font-size:.74rem;color:#ffc107;line-height:1.5">Al confirmar, el comprobante se enviará al administrador. El saldo seguirá pendiente hasta ser aprobado.</p><div class="modal-actions"><button class="btn-action" onclick="cerrarModal();lyvEnviarPagoInline(true)">Sí, ya hice el pago</button><button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button></div></div>`);
   };
 
@@ -4286,7 +4292,7 @@ window.addEventListener('load', function(){
     const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
     if(!tx){alert('Primero escribe el ID de transacción, referencia o folio.');return;}
     if(!file){alert('Primero sube la foto del comprobante.');return;}
-    if(file.size>8*1024*1024){alert('La imagen original no puede superar 8 MB.');return;}
+    if(file.size>15*1024*1024){alert('La imagen original no puede superar 15 MB.');return;}
     abrirModal(`<div style="text-align:center">
       <div style="font-size:2.2rem">⚠️</div>
       <h3 style="margin:8px 0">¿Ya realizaste el pago?</h3>
@@ -4348,178 +4354,5 @@ window.addEventListener('load', function(){
   window.lyvFinalWatch=setInterval(()=>{
     if(lyvFinalUser() && window.lyvSupabase) window.lyvRecoverLatestRechargeFinal();
   },15000);
-})();
-</script>
-
-
-<!-- =========================================================
-     LYV STORE MX — RECARGAS FINALES DEFINITIVAS
-     - No modifica Clever/SixoFire/compra.
-     - Comprobante por RPC seguro (sin UPDATE directo desde navegador).
-     - Binance USDT GLOBAL / Transferencia MX / OXXO MX.
-     - Historial persistente.
-     - Admin solo ve PENDIENTES.
-     - Aprobación acredita saldo una sola vez.
-     ========================================================= -->
-<script>
-(function(){
-  const MAX_RECEIPT_MB = 15;
-
-  function esc(v){
-    try{return typeof lyvManualEscape==='function' ? lyvManualEscape(v==null?'':String(v)) : String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-    catch(e){return String(v==null?'':v);}
-  }
-  function current(){return window.lyvManualRechargeCurrent || (typeof lyvManualRechargeCurrent!=='undefined'?lyvManualRechargeCurrent:null);}
-  function setCurrent(r){window.lyvManualRechargeCurrent=r;try{lyvManualRechargeCurrent=r;}catch(e){}; if(r?.payment_code) window.referenciaPagoActual=r.payment_code;}
-  function uid(){return String(window.lyvUserId||'No disponible');}
-  function methodName(k){return typeof lyvManualMethodName==='function'?lyvManualMethodName(k):({binance:'Binance USDT',transferencia:'Transferencia bancaria',oxxo:'Depósito OXXO'}[k]||k);}
-  function concept(code){return 'VENTA DIGITAL LYV STORE MX | '+String(code||'');}
-
-  /* Aviso visible de operación/validación. */
-  function addLyvNotice(){
-    if(document.getElementById('lyvLaunchNotice')) return;
-    const n=document.createElement('div');
-    n.id='lyvLaunchNotice';
-    n.style.cssText='width:calc(100% - 28px);max-width:1100px;margin:10px auto 4px;padding:11px 13px;border:1px solid rgba(255,193,7,.25);border-radius:14px;background:rgba(255,193,7,.07);color:#f6d77a;font-size:.72rem;line-height:1.5;text-align:center;';
-    n.innerHTML='<b>⚠️ Aviso:</b> las recargas y algunas compras pueden tardar debido a validación de pagos, disponibilidad de stock o alta demanda del proveedor.';
-    const body=document.body;
-    if(body && body.firstElementChild) body.insertBefore(n,body.firstElementChild.nextSibling);
-    else if(body) body.prepend(n);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',addLyvNotice); else addLyvNotice();
-
-  /* Datos de pago correctos y definitivos. */
-  window.LYV_PAYMENT_DATA={
-    binance:{destino:'1219826106'},
-    transferencia:{cuenta:'638180010160392066',banco:'Banco NU',nombre:'lyvstoremx'},
-    oxxo:{cuenta:'5101258632948312',banco:'Banco NU',nombre:'Erick Muñoz'}
-  };
-
-  /* Reemplaza el envío directo .update() por el RPC seguro. */
-  window.lyvEnviarPagoInline=async function(skipConfirm){
-    let r=current();
-    if(!r?.id && typeof window.lyvRecoverLatestRechargeFinal==='function'){
-      try{await window.lyvRecoverLatestRechargeFinal();}catch(e){}
-      r=current();
-    }
-    if(!r?.id){alert('Primero genera una solicitud de recarga.');return;}
-    if(String(r.status||'PENDING').toUpperCase()!=='PENDING'){if(typeof window.lyvFinalRenderReceiptPanel==='function')window.lyvFinalRenderReceiptPanel();return;}
-
-    const tx=String(document.getElementById('lyvInlineTxId')?.value||'').trim();
-    const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
-    if(!tx){alert('Ingresa el ID de transacción, referencia o folio.');return;}
-    if(!file){alert('Sube la foto del comprobante.');return;}
-    if(file.size>MAX_RECEIPT_MB*1024*1024){alert('La imagen original no puede superar '+MAX_RECEIPT_MB+' MB.');return;}
-    if(!skipConfirm && !confirm('Confirma que YA realizaste el pago y que el ID/folio y la foto corresponden a esta recarga.'))return;
-
-    try{
-      const receipt=await lyvResizeReceipt(file);
-      const {data,error}=await window.lyvSupabase.rpc('lyv_submit_manual_recharge_proof',{
-        p_recharge_id:r.id,
-        p_transaction_id:tx,
-        p_receipt_url:receipt,
-        p_receipt_name:file.name
-      });
-      if(error) throw error;
-      setCurrent(data || {...r,transaction_id:tx,receipt_url:receipt,receipt_name:file.name,status:'PENDING'});
-      if(typeof window.lyvFinalRenderReceiptPanel==='function') window.lyvFinalRenderReceiptPanel();
-      else if(typeof window.lyvRenderPanelValidacion==='function') window.lyvRenderPanelValidacion();
-      if(typeof renderizarHistorialRecargasSafe==='function') renderizarHistorialRecargasSafe();
-      if(typeof cargarRecargasManualesAdmin==='function') cargarRecargasManualesAdmin();
-      alert('✅ Pago enviado. Tu recarga quedó PENDIENTE DE VALIDACIÓN.');
-    }catch(e){
-      console.error('lyv_submit_manual_recharge_proof',e);
-      alert('No se pudo enviar el comprobante: '+String(e?.message||e||'Error'));
-    }
-  };
-
-  /* Confirmación final obligatoria. */
-  window.lyvMostrarConfirmacionPago=async function(){
-    if(!current()?.id && typeof window.lyvRecoverLatestRechargeFinal==='function'){
-      try{await window.lyvRecoverLatestRechargeFinal();}catch(e){}
-    }
-    const r=current();
-    if(!r?.id){alert('Primero genera una solicitud de recarga.');return;}
-    if(String(r.status||'PENDING').toUpperCase()!=='PENDING'){if(typeof window.lyvFinalRenderReceiptPanel==='function')window.lyvFinalRenderReceiptPanel();return;}
-    const tx=String(document.getElementById('lyvInlineTxId')?.value||'').trim();
-    const file=document.getElementById('lyvInlineReceipt')?.files?.[0];
-    if(!tx){alert('Primero escribe el ID de transacción, referencia o folio.');return;}
-    if(!file){alert('Primero sube la foto del comprobante.');return;}
-    if(file.size>MAX_RECEIPT_MB*1024*1024){alert('La imagen original no puede superar '+MAX_RECEIPT_MB+' MB.');return;}
-    abrirModal(`<div style="text-align:center">
-      <div style="font-size:2.2rem">⚠️</div>
-      <h3 style="margin:8px 0">¿Ya realizaste el pago?</h3>
-      <p style="font-size:.78rem;color:var(--text-muted);line-height:1.55">Al pulsar <b>CONFIRMAR Y ENVIAR</b> confirmas que el pago ya fue realizado y que el ID/folio y la fotografía corresponden a esta recarga.</p>
-      <p style="font-size:.74rem;color:#ffc107;line-height:1.5">El saldo seguirá pendiente hasta que el administrador revise y apruebe el pago.</p>
-      <div class="modal-actions">
-        <button class="btn-action" onclick="cerrarModal();lyvEnviarPagoInline(true)">CONFIRMAR Y ENVIAR</button>
-        <button class="btn-action" style="background:rgba(255,255,255,.05);color:#fff;box-shadow:none;border:1px solid var(--card-border)" onclick="cerrarModal()">Cancelar</button>
-      </div>
-    </div>`);
-  };
-
-  /* Recuperación persistente mediante RPC. */
-  window.lyvRecoverLatestRechargeFinal=async function(){
-    if(!window.lyvSupabase)return;
-    try{
-      const {data,error}=await window.lyvSupabase.rpc('lyv_get_my_manual_recharges');
-      if(error) throw error;
-      const arr=Array.isArray(data)?data:[];
-      if(arr.length) setCurrent(arr[0]);
-      if(typeof window.lyvFinalRenderReceiptPanel==='function')window.lyvFinalRenderReceiptPanel();
-      if(typeof renderizarHistorialRecargasSafe==='function')renderizarHistorialRecargasSafe();
-    }catch(e){console.warn('LYV recarga persistente:',e);}
-  };
-
-  /* Historial persistente de recargas. */
-  window.renderizarHistorialRecargasSafe=async function(){
-    const c=document.getElementById('listaHistorialRecargas');
-    if(!c)return;
-    if(!window.usuarioActual && !(typeof usuarioActual!=='undefined'&&usuarioActual)){c.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">Inicia sesión para ver tus recargas.</div>';return;}
-    try{
-      const {data,error}=await window.lyvSupabase.rpc('lyv_get_my_manual_recharges');
-      if(error)throw error;
-      const arr=Array.isArray(data)?data:[];
-      c.innerHTML=arr.length?arr.map(r=>{
-        const st=String(r.status||'PENDING').toUpperCase();
-        const color=st==='COMPLETED'?'#6ee7a0':st==='REJECTED'?'#ff8b8b':'#ffc107';
-        const text=st==='COMPLETED'?'COMPLETADA':st==='REJECTED'?'RECHAZADA':'PENDIENTE';
-        return `<div class="order-item" style="margin-bottom:8px;border:1px solid var(--card-border)">
-          <div class="order-header"><span>Recarga $${Number(r.amount_mxn||0).toFixed(2)} MXN</span><span style="color:${color};font-weight:900">${text}</span></div>
-          <div style="font-size:.72rem;color:var(--text-muted);line-height:1.55">Código: <b>${esc(r.payment_code||'')}</b><br>Método: <b>${esc(methodName(r.payment_method))}</b><br>ID/folio: <b>${esc(r.transaction_id||'Pendiente')}</b><br>${r.created_at?new Date(r.created_at).toLocaleString('es-MX'):''}</div>
-          ${st==='COMPLETED'?'<div style="margin-top:7px;color:#6ee7a0;font-size:.72rem">✅ Saldo acreditado.</div>':''}
-          ${st==='REJECTED'?'<div style="margin-top:7px;color:#ff9a9a;font-size:.72rem">❌ Motivo: '+esc(r.admin_note||'No indicado')+'</div>':''}
-        </div>`;
-      }).join(''):'<div style="font-size:.82rem;color:var(--text-muted);text-align:center;padding:20px">No hay recargas registradas.</div>';
-    }catch(e){console.warn(e);c.innerHTML='<div style="font-size:.82rem;color:#ff8b8b;text-align:center;padding:20px">No se pudo cargar el historial real.</div>';}
-  };
-
-  /* Detalle de pago con código también para transferencia/OXXO. */
-  window.renderizarDetalleMetodoPagoManual=function(){
-    const c=document.getElementById('detalleMetodoPagoContainer'); if(!c)return;
-    const usd=Number(window.paqueteRecargaElegido||paqueteRecargaElegido||0);
-    const mxn=typeof obtenerTotalMxn==='function'?Number(obtenerTotalMxn(usd)||0):Math.round(usd*18.18*100)/100;
-    const code=(window.referenciaPagoActual||current()?.payment_code||'');
-    const u=uid();
-    const w=`<div style="margin-top:10px;padding:11px;border-radius:12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);font-size:.72rem;line-height:1.5"><b>⚠️ IMPORTANTE</b><br>Guarda el código y usa el concepto indicado. Después de pagar, envía el ID/folio y la foto del comprobante. El saldo solo se acredita después de la aprobación.</div>`;
-    if(window.metodoPagoElegido==='binance' || (typeof metodoPagoElegido!=='undefined'&&metodoPagoElegido==='binance')){
-      c.innerHTML=`<div class="order-item"><b>Binance USDT · GLOBAL</b><div style="font-size:.8rem;margin-top:7px">Total: <b>${usd.toFixed(2)} USDT</b></div><div style="font-size:.78rem;margin-top:7px">ID Binance destino: <b>1219826106</b></div>${code?`<div style="font-size:.78rem;margin-top:7px;color:#ffc107">Código: <b>${esc(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>${esc(concept(code))}</b></div><div style="font-size:.76rem;margin-top:6px">ID LYV: <b>${esc(u)}</b></div>${w}`:'<div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">Genera primero la solicitud para obtener tu código único.</div>'}</div>`;
-    }else if((window.metodoPagoElegido|| (typeof metodoPagoElegido!=='undefined'?metodoPagoElegido:''))==='transferencia'){
-      c.innerHTML=`<div class="order-item"><b>Transferencia bancaria · México</b><div style="font-size:1.05rem;margin-top:7px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div><div style="font-size:.76rem;margin-top:7px">Cuenta: <b>638180010160392066</b></div><div style="font-size:.76rem">Banco: <b>Banco NU</b></div><div style="font-size:.76rem">Nombre: <b>lyvstoremx</b></div>${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código: <b>${esc(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>${esc(concept(code))}</b></div><div style="font-size:.76rem;margin-top:6px">ID LYV: <b>${esc(u)}</b></div>${w}`:'<div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">Genera primero la solicitud para obtener tu código único.</div>'}</div>`;
-    }else{
-      c.innerHTML=`<div class="order-item"><b>Depósito OXXO · México</b><div style="font-size:1.05rem;margin-top:7px;color:var(--accent-blue)">Total exacto: <b>$${mxn.toFixed(2)} MXN</b></div><div style="font-size:.76rem;margin-top:7px">Cuenta: <b>5101258632948312</b></div><div style="font-size:.76rem">Banco: <b>Banco NU</b></div><div style="font-size:.76rem">Nombre: <b>Erick Muñoz</b></div>${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código: <b>${esc(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>${esc(concept(code))}</b></div><div style="font-size:.76rem;margin-top:6px">ID LYV: <b>${esc(u)}</b></div>${w}`:'<div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">Genera primero la solicitud para obtener tu código único.</div>'}</div>`;
-    }
-  };
-
-  /* Reemplaza el límite visual anterior de 8 MB. */
-  window.lyvReceiptMaxMb=MAX_RECEIPT_MB;
-
-  /* Recuperación después de login/refresh. */
-  window.addEventListener('load',()=>setTimeout(()=>{
-    if(window.usuarioActual || (typeof usuarioActual!=='undefined'&&usuarioActual)){
-      window.lyvRecoverLatestRechargeFinal();
-      if(typeof window.renderizarDetalleMetodoPagoManual==='function')window.renderizarDetalleMetodoPagoManual();
-    }
-  },700));
 })();
 </script>
