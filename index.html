@@ -3828,7 +3828,7 @@ function renderizarDetalleMetodoPagoManual(){
       <b>Binance USDT · GLOBAL</b>
       <div style="font-size:.76rem;margin-top:6px">Paquete: <b>$${usd.toFixed(2)} USD</b> · Total: <b>${usd.toFixed(2)} USDT</b></div>
       <div style="font-size:.76rem;margin-top:7px">ID Binance destino: <b>${LYV_PAYMENT_DATA.binance.destino}</b></div>
-      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>${lyvManualEscape(lyvPaymentConcept(r.payment_code||''))}</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
+      ${code?`<div style="font-size:.78rem;margin-top:8px;color:#ffc107">Código de pago: <b>${lyvManualEscape(code)}</b></div><div style="font-size:.76rem;margin-top:6px">Concepto: <b>${lyvManualEscape(lyvPaymentConcept(code||''))}</b></div><div style="font-size:.76rem;margin-top:6px">ID de usuario: <b>${lyvManualEscape(uid)}</b></div>${warning}`:`<div style="font-size:.7rem;color:var(--text-muted);margin-top:8px">Primero genera la solicitud para recibir tu código único.</div>`}
     </div>`;
   }else if(metodoPagoElegido==='transferencia'){
     const d=LYV_PAYMENT_DATA.transferencia;
