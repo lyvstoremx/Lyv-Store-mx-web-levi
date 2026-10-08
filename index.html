@@ -1946,17 +1946,7 @@ cargarImagenesProductosGuardadas();
                 console.error('No se pudo cargar profiles:', e);
             }
 
-            if(errorPerfil || !perfil){
-                await lyvSupabase.auth.signOut();
-                usuarioActual = null;
-                perfilNombreActual = '';
-                correoUsuario = '';
-                cambiarVista('login');
-                alert('No se pudo verificar tu cuenta. Inicia sesión nuevamente.');
-                return;
-            }
-
-            if(perfil.is_blocked === true){
+            if(perfil?.is_blocked === true){
                 usuarioActual = null;
                 perfilNombreActual = '';
                 correoUsuario = '';
