@@ -4105,7 +4105,63 @@ window.addEventListener('load',()=>{
     },1200);
   });
 })();
-</script>\n</body>
+</script>\n
+<script>
+/* LYV FINAL HOTFIX — RECUPERACIÓN REAL DE RECARGA DESPUÉS DE LOGIN/REFRESH
+   No modifica Clever/SixoFire ni las funciones SQL. Solo asegura que el último
+   registro de lyv_manual_recharges se recupere antes de pintar el comprobante. */
+(function(){
+  let tries=0, timer=null;
+  async function recuperar(){
+    try{
+      if(typeof window.lyvRecoverLatestRechargeFinal==='function'){
+        await window.lyvRecoverLatestRechargeFinal();
+      }else if(typeof window.lyvCargarRecargaActualDesdeSupabase==='function'){
+        await window.lyvCargarRecargaActualDesdeSupabase();
+      }
+      const r=window.lyvManualRechargeCurrent;
+      if(r && r.id){
+        if(typeof window.lyvFinalRenderReceiptPanel==='function') window.lyvFinalRenderReceiptPanel();
+        else if(typeof window.lyvRenderPanelValidacion==='function') window.lyvRenderPanelValidacion();
+        if(timer){clearInterval(timer);timer=null;}
+        return true;
+      }
+    }catch(e){ console.warn('LYV hotfix recuperación:',e); }
+    return false;
+  }
+  function iniciar(){
+    tries=0;
+    if(timer) clearInterval(timer);
+    recuperar();
+    timer=setInterval(async()=>{
+      tries++;
+      const ok=await recuperar();
+      if(ok || tries>=20){clearInterval(timer);timer=null;}
+    },1000);
+  }
+  window.addEventListener('load',()=>setTimeout(iniciar,1200));
+  setTimeout(()=>{
+    try{
+      if(window.lyvSupabase && window.lyvSupabase.auth){
+        window.lyvSupabase.auth.onAuthStateChange((event,session)=>{
+          if(session?.user && ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){
+            setTimeout(iniciar,300);
+          }
+        });
+      }
+    }catch(e){console.warn('LYV hotfix auth listener:',e);}
+  },1500);
+  document.addEventListener('click',e=>{
+    const el=e.target?.closest?.('button,[role="button"],a');
+    if(!el)return;
+    const t=(el.textContent||'').toLowerCase();
+    if(t.includes('recargar') || t.includes('billetera') || t.includes('ya hice el pago')){
+      setTimeout(iniciar,150);
+    }
+  },true);
+})();
+</script>
+</body>
 </html>
 
 <script>
