@@ -1937,6 +1937,33 @@ cargarImagenesProductosGuardadas();
 
             let perfil = null;
             let errorPerfil = null;
+
+            // Comprobación real de bloqueo mediante función SECURITY DEFINER.
+            // Así funciona aunque RLS impida leer directamente profiles.
+            const {data:estadoBloqueo,error:errorBloqueo}=await lyvSupabase.rpc('lyv_check_my_blocked_status');
+            if(errorBloqueo){
+                console.error('No se pudo verificar el estado de bloqueo:', errorBloqueo);
+                await lyvSupabase.auth.signOut();
+                usuarioActual = null;
+                throw new Error('No se pudo verificar tu cuenta. Inicia sesión nuevamente.');
+            }
+
+            if(estadoBloqueo === true){
+                await lyvSupabase.auth.signOut();
+                usuarioActual = null;
+                correoUsuario = '';
+                perfilNombreActual = '';
+                const h=document.getElementById('headerUserBtn');
+                if(h) h.innerText='INGRESAR';
+                const d=document.getElementById('drawerAuthBtn');
+                if(d) d.innerHTML='<span>🔐 Iniciar Sesión</span>';
+                const b=document.getElementById('catalogAuthBanner');
+                if(b) b.style.display='flex';
+                cambiarVista('login');
+                alert('🚫 Esta cuenta está bloqueada.');
+                return;
+            }
+
             try {
                 const {data,error}=await lyvSupabase.from('profiles').select('id,lyv_user_id,email,username,display_name,role,is_blocked,free_fire_id,free_fire_name').eq('id',user.id).maybeSingle();
                 if(error) throw error;
@@ -1944,12 +1971,6 @@ cargarImagenesProductosGuardadas();
             } catch(e) {
                 errorPerfil = e;
                 console.error('No se pudo cargar profiles:', e);
-            }
-
-            if(perfil?.is_blocked){
-                await lyvSupabase.auth.signOut();
-                usuarioActual = null;
-                throw new Error('Esta cuenta está bloqueada.');
             }
 
             correoUsuario = user.email || perfil?.email || correoUsuario;
