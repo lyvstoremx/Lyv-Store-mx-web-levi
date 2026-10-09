@@ -676,6 +676,12 @@
     </div>
 
     <!-- Contenedor Principal -->
+    <section class="lyv-hero" aria-label="Lyv Store Mx">
+      <div class="lyv-hero-kicker">FREE FIRE · RECARGAS OFICIALES</div>
+      <div class="lyv-hero-title">SUBE DE NIVEL<span>.</span></div>
+      <div class="lyv-hero-copy">Diamantes, fragmentos y pases con atención Lyv.</div>
+      <div class="lyv-hero-tags"><span>⚡ ENTREGA POR ID</span><span>🔒 COMPRA SEGURA</span></div>
+    </section>
     <div class="container">
 
         <!-- 1. VISTA: TIENDA OFICIAL -->
@@ -933,16 +939,8 @@
         <div id="view-admin" class="view-section">
             <div class="card">
                 <div class="card-title" style="color: var(--accent-blue);" data-i18n="adminTitle">⚙ Panel de Administración (Lyv)</div>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="adminSub">Control total: Logo, precios, productos y mantenimiento.</p>
-                
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div>
-                        <label style="font-size: 0.72rem; color: var(--text-muted);" data-i18n="urlLogoLabel">URL del Logo o Icono</label>
-                        <input type="text" id="adminLogoUrl" placeholder="Ej. URL de imagen o emoji 💎">
-                    </div>
-                    <button class="btn-action" onclick="actualizarLogoAdmin()" data-i18n="guardarLogo">Guardar Logo / Imagen</button>
-                </div>
-            </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="adminSub">Control de inventario, pedidos, pagos y mantenimiento.</p>
+</div>
 
             <!-- AVISO GLOBAL PARA TODOS -->
             <div class="card">
@@ -1090,10 +1088,7 @@
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     <input type="text" id="newProdName" placeholder="Nombre (Ej. 1000 Diamantes)" data-i18n-placeholder="nombreProdPlaceholder">
                     <input type="text" id="newProdPriceMxn" placeholder="Precio en MXN (Ej. 150.00)" inputmode="numeric" data-i18n-placeholder="precioMxnPlaceholder">
-                    <input type="text" id="newProdPriceUsd" placeholder="Precio en USD (Ej. 8.80)" inputmode="numeric" data-i18n-placeholder="precioUsdPlaceholder">
-                    <input type="text" id="newProdIcon" placeholder="Emoji o URL de imagen (Ej. 💎 o https://...)" value="💎" data-i18n-placeholder="iconoPlaceholder">
-                    <input type="file" id="newProdImageFile" accept="image/*" onchange="cargarImagenProductoNueva(this)">
-                    <div id="newProdImagePreview" style="display:none;align-items:center;gap:8px;font-size:.72rem;color:var(--text-muted);"><img id="newProdImagePreviewImg" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);"><span>Imagen lista para este producto</span></div>
+                    <input type="hidden" id="newProdIcon" value="💎"><input type="text" id="newProdPriceUsd" placeholder="Precio en USD (Ej. 8.80)" inputmode="numeric" data-i18n-placeholder="precioUsdPlaceholder">
                     <button class="btn-action" style="background: linear-gradient(135deg, #ff5b63, #d94a52); color: #fff;" onclick="agregarOModificarProducto()" data-i18n="agregarCatBtn">Agregar al Catálogo</button>
                 </div>
             </div>
@@ -1548,7 +1543,7 @@ function generarCodigoNotaBinance(){
                 proximamente: "Próximamente",
                 otrosDesc: "Estamos preparando nuevas herramientas, cuentas chetadas y sorpresas exclusivas. ¡Muy pronto disponible en Lyv Store!",
                 adminTitle: "⚙ Panel de Administración (Lyv)",
-                adminSub: "Control total: Logo, precios, productos y mantenimiento.",
+                adminSub: "Control de inventario, pedidos, pagos y mantenimiento.",
                 urlLogoLabel: "URL del Logo o Icono",
                 guardarLogo: "Guardar Logo / Imagen",
                 ctrlMantTitle: "🚨 Control de Mantenimiento / Proveedor",
@@ -3220,9 +3215,48 @@ async function sincronizarCatalogoSixoFire(){
     }
 }
 
-function renderizarAdminProductos(){let list=document.getElementById('adminProductList');if(!list)return;list.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const img=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')))?`<img src="${p.icon}" style="width:44px;height:44px;object-fit:contain;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.03)">`:`<span style="font-size:1.7rem">${escapeHtml(p.icon)}</span>`;return `<div class="admin-row ${p.activo?'':'status-off'}" style="flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">${img}<div style="min-width:0"><div style="font-weight:bold;font-size:.85rem">${escapeHtml(p.nombre)}</div><div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN</div><div style="font-size:.65rem;color:var(--text-muted)">Producto conectado: ${escapeHtml(p.provider_product_id||'Automático')}</div></div></div><label class="switch"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label><div style="display:flex;width:100%;gap:6px"><input type="text" id="input-img-${p.id}" value="${escapeHtml(p.icon)}" placeholder="URL de imagen o emoji" style="margin:0;flex:1;font-size:.78rem;padding:8px 10px"><input type="file" id="file-img-${p.id}" accept="image/*" style="max-width:105px;font-size:.68rem" onchange="cargarImagenProductoExistente(${p.id},this)"><button class="btn-action" style="width:auto;padding:8px 11px;font-size:.72rem;box-shadow:none" onclick="actualizarIconoProducto(${p.id})">Guardar imagen</button></div></div>`}).join('');}
+function lyvArtwork(p){
+  const name=String(p?.nombre||'').toLowerCase();
+  let symbol='◆', sub='LYV STORE';
+  if(name.includes('booyah')||name.includes('pase')){symbol='✦';sub='BOOYAH PASS';}
+  else if(name.includes('fragment')){symbol='✧';sub='FRAGMENTOS';}
+  else if(name.includes('diam')){symbol='◆';sub='DIAMANTES';}
+  return `<div class="lyv-artwork" role="img" aria-label="${escapeHtml(p?.nombre||'Producto Lyv')}"><div class="lyv-artwork-glow"></div><div class="lyv-artwork-symbol">${symbol}</div><div class="lyv-artwork-sub">${sub}</div></div>`;
+}
+function renderizarAdminProductos(){
+  const list=document.getElementById('adminProductList');
+  if(!list)return;
+  list.innerHTML=productos.map(p=>{
+    if(typeof p.activo==='undefined')p.activo=true;
+    const iconContent=lyvArtwork(p);
+    return `<div class="admin-row ${p.activo?'':'status-off'}" style="gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+        <div class="lyv-artwork-mini">${iconContent}</div>
+        <div style="min-width:0">
+          <div style="font-weight:800;font-size:.85rem">${escapeHtml(p.nombre)}</div>
+          <div style="font-size:.72rem;color:var(--accent-blue)">$${Number(p.mxn).toFixed(2)} MXN · $${Number(p.usd).toFixed(2)} USD</div>
+          <div style="font-size:.65rem;color:var(--text-muted)">Producto conectado: ${escapeHtml(p.provider_product_id||'Automático')}</div>
+        </div>
+      </div>
+      <label class="switch" aria-label="Disponibilidad del producto"><input type="checkbox" ${p.activo?'checked':''} onchange="alternarDisponibilidadProducto(${p.id},this.checked)"><span class="slider"></span></label>
+    </div>`;
+  }).join('');
+}
 function alternarDisponibilidadProducto(id,activo){const p=productos.find(x=>x.id===id);if(!p)return;p.activo=!!activo;guardarEstadoProductosAdminPersistente();renderizarTienda();renderizarAdminProductos();lyvLog('PRODUCTO',`${p.nombre}: ${p.activo?'Disponible':'No disponible'}`);}
-function renderizarTienda(){let grid=document.getElementById('catalogoProductosGrid');if(!grid)return;grid.innerHTML=productos.map(p=>{if(typeof p.activo==='undefined')p.activo=true;const iconContent=(typeof p.icon==='string'&&(p.icon.startsWith('http')||p.icon.startsWith('data:image/')||p.icon.includes('<svg')))?`<img src="${p.icon}" class="gem-img">`:`<span style="font-size:1.4rem">${escapeHtml(p.icon)}</span>`;return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}><div class="gem-img-box">${iconContent}</div><div class="prod-name">${escapeHtml(p.nombre)}</div><div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div><div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}</div>`}).join('');}
+function renderizarTienda(){
+  const grid=document.getElementById('catalogoProductosGrid');if(!grid)return;
+  grid.innerHTML=productos.map(p=>{
+    if(typeof p.activo==='undefined')p.activo=true;
+    const art=lyvArtwork(p);
+    return `<div class="product-card ${p.activo?'':'status-off'}" ${p.activo?`onclick="seleccionarProd(this,'${String(p.nombre).replace(/'/g,"\\'")}',${Number(p.mxn)},${Number(p.id)})"`:''}>
+      <div class="gem-img-box lyv-gem-art">${art}</div>
+      <div class="prod-name">${escapeHtml(p.nombre)}</div>
+      <div class="prod-price-mxn">$${Number(p.mxn).toFixed(2)} MXN</div>
+      <div class="prod-price-usd">$${Number(p.usd).toFixed(2)} USD</div>
+      ${p.activo?'':'<div style="font-size:.68rem;color:#ff6b6b;margin-top:5px">No disponible</div>'}
+    </div>`;
+  }).join('');
+}
 
 function seleccionarProd(el,nombre,precio,id){
     document.querySelectorAll('.product-card').forEach(c=>c.classList.remove('selected'));
