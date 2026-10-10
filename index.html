@@ -3152,33 +3152,24 @@ async function validarId(){
     if(msg) msg.innerHTML = '<span style="color:#ffc107">⏳ Verificando ID de Free Fire y detectando región...</span>';
 
     try{
-        // Para usuarios de México probamos primero SAC y después US.
-        // No se toca la compra, el saldo ni la creación de órdenes.
-        const regionesAuto = ['SAC','US'];
-        let data = null;
-        let detectedRegion = '';
+        // Usar la detección automática del endpoint, que prueba las regiones
+        // permitidas por SixoFire. No se modifica el flujo de compra, saldo ni órdenes.
+        const r = await llamarCleverEndpoint({
+            action: 'account_info',
+            uid: inputId,
+            region: 'AUTO'
+        });
 
-        for(const region of regionesAuto){
-            try{
-                const r = await llamarCleverEndpoint({
-                    action: 'account_info',
-                    uid: inputId,
-                    region
-                });
-
-                if(r?.code === 'ACCOUNT_INFO_OK'){
-                    data = r;
-                    detectedRegion = String(r?.account?.region || region).trim().toUpperCase();
-                    break;
-                }
-            }catch(err){
-                console.warn('Región no encontrada:', region, err);
-            }
+        if(r?.code !== 'ACCOUNT_INFO_OK' || !r?.account){
+            throw new Error(
+                r?.message ||
+                r?.provider_message ||
+                'No se pudo verificar el jugador. Intenta de nuevo.'
+            );
         }
 
-        if(!data){
-            throw new Error('No se pudo encontrar ese jugador en las regiones disponibles para detección automática.');
-        }
+        const data = r;
+        const detectedRegion = String(r.account.region || '').trim().toUpperCase();
 
         const account = data?.account || {};
         const nickname = String(account.nickname || '').trim();
