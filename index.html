@@ -2559,7 +2559,8 @@ async function confirmarCompraVisual(){
             uid:String(p.idFreeFire),
             store_product_id:Number(p.producto.id),
             quantity:Number(p.cantidad),
-            message:'¡Gracias por tu compra! Visita lyvstoremx.com ❤️',
+            // El backend solo enviará este mensaje a Sixoff si el producto es itemType GIFT.
+            message:'¡Gracias por tu compra en Lyv Store Mx! ❤️',
             local_order_id:generarIdOrdenUnico()
         });
 
